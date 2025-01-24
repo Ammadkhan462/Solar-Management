@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "954441175115",
+    "project_id": "solar-management-bb0a3",
+    "storage_bucket": "solar-management-bb0a3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:954441175115:android:02d3d778e30f24e2277dce",
+        "android_client_info": {
+          "package_name": "com.example.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNNeWU57Rwrsc7jKde1WONU5MotUecyo8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
