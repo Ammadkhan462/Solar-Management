@@ -1,151 +1,136 @@
-import 'package:admin/Common%20widgets/commonbutton.dart';
-import 'package:admin/app/modules/home/views/home_view.dart';
+import 'package:admin/Common%20widgets/common_button.dart';
+import 'package:admin/Common%20widgets/common_text.dart';
+import 'package:admin/Common%20widgets/textbox.dart';
+import 'package:admin/app/modules/LoginPage/views/login_page_view.dart';
+import 'package:admin/app/routes/app_pages.dart';
+import 'package:admin/app/theme/app_colors.dart';
+import 'package:admin/app/theme/typography.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../controllers/signup_page_controller.dart';
 
 class SignupPageView extends GetView<SignupPageController> {
-  const SignupPageView({Key? key}) : super(key: key);
-
+  SignupPageView({Key? key}) : super(key: key);
+  final controller = Get.put(SignupPageController());
+  final signupFormKey = GlobalKey<FormState>();
   @override
   Widget build(BuildContext context) {
-    TextEditingController email = TextEditingController();
-    TextEditingController password = TextEditingController();
-    TextEditingController name = TextEditingController();
-    TextEditingController role =
-        TextEditingController(); // For admin to assign role
-    Authcontroller authcontroller = Get.put(Authcontroller());
+    return GetBuilder<SignupPageController>(
+        init: SignupPageController(),
+        builder: (_) {
+          return Scaffold(
+              appBar: AppBar(title: CommonText(text: 'Admin Signup')),
+              body: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: signupFormKey,
+                  child: Column(
+                    children: [
+                      CommonTextBox(
+                        controller: _.name,
+                        hintText: 'Name',
+                      ),
+                      CommonTextBox(
+                        controller: _.emailController,
+                        hintText: 'Email',
+                      ),
 
-    return Column(
-      children: [
-        Container(
-          height: 100,
-        ),
-        TextField(
-          controller: name,
-          decoration: InputDecoration(
-            hintText: "Name",
-            prefixIcon: Icon(Icons.person),
-          ),
-        ),
-        SizedBox(height: 10),
-        TextField(
-          controller: email,
-          decoration: InputDecoration(
-            hintText: "Email",
-            prefixIcon: Icon(Icons.email),
-          ),
-        ),
-        SizedBox(height: 10),
-        TextField(
-          controller: password,
-          decoration: InputDecoration(
-            hintText: "Password",
-            prefixIcon: Icon(Icons.lock),
-          ),
-        ),
-        SizedBox(height: 10),
-        SizedBox(height: 30),
-        Obx(() => authcontroller.isLoading.value
-            ? CircularProgressIndicator()
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  PrimaryButton(
-                    ontap: () {
-                      String trimmedEmail = email.text.trim();
-                      if (trimmedEmail.isEmpty ||
-                          password.text.isEmpty ||
-                          name.text.isEmpty) {
-                        print("Please fill in all fields.");
-                        return;
-                      }
-                      authcontroller.createUser(
-                        trimmedEmail,
-                        password.text,
-                        name.text.trim(),
-                      );
-                    },
-                    btnName: "SIGN UP",
-                    icon: Icons.lock_open_outlined,
+                      Obx(() => TextField(
+                            controller: _.passwordController,
+                            obscureText: _.isPasswordHidden.value,
+                            decoration: InputDecoration(
+                              suffixIcon: IconButton(
+                                icon: Icon(_.isPasswordHidden.value
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                                onPressed: _.togglePasswordVisibility,
+                              ),
+                              hintText: 'Password',
+                              hintStyle: AppTypography.medium
+                                  .copyWith(color: AppColors.lightGray),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: AppColors.darkGray),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: AppColors.primary),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
+                            ),
+                          ).paddingAll(10)),
+
+                      // Confirm Password Field
+                      Obx(() => TextField(
+                            controller: _.confirmPasswordController,
+                            obscureText: _.isConfirmPasswordHidden.value,
+                            decoration: InputDecoration(
+                              suffixIcon: IconButton(
+                                icon: Icon(_.isConfirmPasswordHidden.value
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                                onPressed: _.toggleConfirmPasswordVisibility,
+                              ),
+                              hintText: 'Password',
+                              hintStyle: AppTypography.medium
+                                  .copyWith(color: AppColors.lightGray),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: AppColors.darkGray),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: AppColors.primary),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
+                            ),
+                          ).paddingAll(10)),
+
+                      const SizedBox(height: 20),
+                      Obx(
+                        () => CommonButton(
+                          width: 360,
+                          height: 50,
+                          isLoading:
+                              _.isLoading.value, // Observing isLoading state
+
+                          onPressed: _.signupAdmin,
+                          text: 'Signup',
+                        ),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Login Button (Text Form)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CommonText(text: "Already have an account?"),
+                          TextButton(
+                            onPressed: () {
+                              Get.toNamed(
+                                  Routes.LOGIN_PAGE); // Navigate to login page
+                            },
+                            child: CommonText(
+                              text: "Login",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ))
-      ],
-    ).paddingAll(10);
-  }
-}
-
-class Authcontroller extends GetxController {
-  final auth = FirebaseAuth.instance;
-  RxBool isLoading = false.obs;
-  final db = FirebaseFirestore.instance;
-
-  Future<void> login(String email, String password) async {
-    isLoading.value = true;
-    try {
-      await auth.signInWithEmailAndPassword(email: email, password: password);
-      Get.offAll(HomeView());
-    } catch (e) {
-      print('Login failed: $e');
-      Get.snackbar('Error', 'Login failed. Please try again.');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> createUser(String email, String password, String name) async {
-    isLoading.value = true;
-    try {
-      // Create user with Firebase Authentication
-      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Initialize user with their name and role
-      await userInit(userCredential.user!.uid, email, name);
-      print("Account created successfully");
-
-      // Navigate to homepage after successful sign up
-      Get.offAll(HomeView());
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        print('Email already in use');
-        Get.snackbar('Error', 'This email address is already in use.');
-      } else if (e.code == 'weak-password') {
-        print('Password is too weak');
-        Get.snackbar('Error', 'The password is too weak.');
-      } else {
-        print('Unhandled error: ${e.code}');
-        Get.snackbar('Error', 'An unexpected error occurred: ${e.message}');
-      }
-    } catch (e) {
-      print('An error occurred: $e');
-      Get.snackbar('Error', 'An unexpected error occurred. Please try again.');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> userInit(
-    String uid,
-    String email,
-    String name,
-  ) async {
-    // Add user details to Firestore
-    await db.collection('users').doc(uid).set({
-      'email': email,
-      'name': name,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> logout() async {
-    await auth.signOut();
-    Get.offAllNamed('/authpage');
+                ),
+              ));
+        });
   }
 }
