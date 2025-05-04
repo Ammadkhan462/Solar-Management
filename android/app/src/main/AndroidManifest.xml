@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <application
-        android:label="admin"
+        android:label="Shaheer Enterprises"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

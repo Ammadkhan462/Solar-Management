@@ -1,6 +1,8 @@
 import 'dart:math';
 
-import 'package:admin/app/modules/EmployeesRegistration/controllers/employees_registration_controller.dart';
+import 'package:admin/app/modules/ManagerDashboard/controllers/manager_dashboard_controller.dart';
+import 'package:admin/app/modules/ManagerPanel/controllers/manager_panel_controller.dart'
+    as panel;
 import 'package:admin/app/routes/app_pages.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,81 +19,73 @@ class ManagerDashboardController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // List to Store Registered Employees
-  var employeesList = <EmployeeModel>[].obs;
-
-  // List to Store Managers (if needed)
-  var managersList = <EmployeeModel>[].obs; // New list for managers
-
+  var managersList = <ManagerModel>[].obs;
   var isLoading = false.obs;
 
-  // Register employee method
-  Future<void> registerEmployee(
-      String name, String cnic, String designation) async {
+  @override
+  void onInit() {
+    super.onInit();
+    fetchManagers(); // Fetch managers when controller initializes
+  }
+
+  // Fetch All Registered Managers
+  void fetchManagers() async {
     try {
       isLoading.value = true;
-
-      // Generate employee email and password
-      String employeeEmail =
-          "${name.replaceAll(' ', '').toLowerCase()}@company.com";
-      String employeePassword = _generateRandomPassword(8);
-
-      // Create employee in Firebase Authentication
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: employeeEmail,
-        password: employeePassword,
-      );
-
-      String employeeUID = userCredential.user!.uid;
-
-      // Store employee details in Firestore
-      EmployeeModel newEmployee = EmployeeModel(
-        uid: employeeUID,
-        name: name,
-        email: employeeEmail,
-        password: employeePassword,
-        cnic: cnic,
-        designation: designation,
-      );
-
-      await _firestore
-          .collection("Employees")
-          .doc(employeeUID)
-          .set(newEmployee.toJson());
-
-      isLoading.value = false;
-
-      // Fetch updated list of employees after registration
-      fetchEmployees();
-    } catch (e) {
-      isLoading.value = false;
-      Get.snackbar("Error", e.toString());
-    }
-  }
-
-  // Fetch All Registered Employees
-  void fetchEmployees() async {
-    try {
       QuerySnapshot querySnapshot =
-          await _firestore.collection("Employees").get();
-      employeesList.value = querySnapshot.docs
+          await _firestore.collection("Managers").get();
+
+      managersList.value = querySnapshot.docs
           .map((doc) =>
-              EmployeeModel.fromJson(doc.data() as Map<String, dynamic>))
+              ManagerModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
+      isLoading.value = false;
     } catch (e) {
-      Get.snackbar("Error", "Failed to fetch employees: $e");
+      isLoading.value = false;
+      Get.snackbar("Error", "Failed to fetch managers: $e");
     }
   }
+}
 
-  String _generateRandomPassword(int length) {
-    const String chars =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#\$%^&*";
+class ManagerModel {
+  String uid;
+  String name;
+  String email;
+  String password;
+  String cnic;
+  String adminUid;
 
-    Random random = Random();
+  ManagerModel({
+    required this.uid,
+    required this.name,
+    required this.email,
+    required this.password,
+    required this.cnic,
+    required this.adminUid,
+  });
 
-    return String.fromCharCodes(Iterable.generate(
-        length, (_) => chars.codeUnitAt(random.nextInt(chars.length))));
+  // Convert Manager object to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'uid': uid,
+      'name': name,
+      'email': email,
+      'password': password,
+      'cnic': cnic,
+      'adminUid': adminUid,
+    };
+  }
+
+  // Convert JSON to Manager object
+  factory ManagerModel.fromJson(Map<String, dynamic> json) {
+    return ManagerModel(
+      uid: json['uid'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      password: json['password'] ?? '',
+      cnic: json['cnic'] ?? '',
+      adminUid: json['adminUid'] ?? '',
+    );
   }
 }
 

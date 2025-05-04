@@ -1,13 +1,11 @@
+import 'package:admin/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart'; // For clipboard functionality
 import '../controllers/manager_dashboard_controller.dart';
 
 class ManagerDashboardView extends GetView<ManagerDashboardController> {
-  ManagerDashboardView({Key? key}) : super(key: key);
-
-  final ManagerDashboardController controller =
-      Get.put(ManagerDashboardController());
+  const ManagerDashboardView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,78 +13,84 @@ class ManagerDashboardView extends GetView<ManagerDashboardController> {
       appBar: AppBar(
         title: const Text("Managers Credentials"),
         centerTitle: true,
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () {})],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => Get.offAllNamed(Routes.LOGIN_CHOICE),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Obx(() {
-          if (controller.managersList.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          return ListView.builder(
-            itemCount: controller.managersList.length,
-            itemBuilder: (context, index) {
-              final manager = controller.managersList[index];
+        if (controller.managersList.isEmpty) {
+          return const Center(child: Text("No managers found"));
+        }
 
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.person, color: Colors.blue),
-                  title: Text(manager.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Manager CNIC
-                      Text("CNIC: ${manager.cnic}",
-                          style: const TextStyle(fontSize: 16)),
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: controller.managersList.length,
+          itemBuilder: (context, index) {
+            final manager = controller.managersList[index];
+            return _buildManagerCard(manager);
+          },
+        );
+      }),
+    );
+  }
 
-                      // Email Section
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("Email: ${manager.email}",
-                              style: const TextStyle(fontSize: 16)),
-                          IconButton(
-                            icon: const Icon(Icons.copy, color: Colors.blue),
-                            onPressed: () {
-                              // Copy email to clipboard
-                              Clipboard.setData(
-                                  ClipboardData(text: manager.email));
-                              Get.snackbar("Copied",
-                                  "Manager's email copied to clipboard.");
-                            },
-                          ),
-                        ],
-                      ),
-
-                      // Password Section
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("Password: ${manager.password}",
-                              style: const TextStyle(
-                                  fontSize: 16, color: Colors.red)),
-                          IconButton(
-                            icon: const Icon(Icons.copy, color: Colors.blue),
-                            onPressed: () {
-                              // Copy password to clipboard
-                              Clipboard.setData(
-                                  ClipboardData(text: manager.password));
-                              Get.snackbar("Copied",
-                                  "Manager's password copied to clipboard.");
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
+  Widget _buildManagerCard(ManagerModel manager) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              manager.name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text("CNIC: ${manager.cnic}"),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: Text("Email: ${manager.email}")),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: manager.email));
+                    Get.snackbar("Copied", "Email copied to clipboard");
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "Password: ${manager.password}",
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
-              );
-            },
-          );
-        }),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: manager.password));
+                    Get.snackbar("Copied", "Password copied to clipboard");
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

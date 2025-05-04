@@ -1,5 +1,7 @@
 import 'package:admin/Common%20widgets/common_text.dart';
+import 'package:admin/Common%20widgets/common_utils.dart';
 import 'package:admin/app/modules/EmployeesRegistration/views/employees_registration_view.dart';
+import 'package:admin/app/modules/ManagerPanel/views/manager_project.dart';
 import 'package:admin/app/routes/app_pages.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +12,20 @@ import 'package:video_player/video_player.dart';
 import '../controllers/manager_panel_controller.dart';
 import 'package:intl/intl.dart'; // For date formatting
 
+import 'package:admin/app/theme/app_colors.dart';
+import 'package:admin/app/theme/typography.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:admin/Common widgets/common_button.dart';
+import 'package:admin/Common widgets/common_text.dart';
+import 'package:admin/Common widgets/textbox.dart';
+import 'package:admin/app/routes/app_pages.dart';
+
 class ManagerPanelView extends GetView<ManagerPanelController> {
   const ManagerPanelView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Get screen dimensions
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isPortrait =
@@ -23,8 +33,14 @@ class ManagerPanelView extends GetView<ManagerPanelController> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manager Panel'),
+        title: CommonText(
+          text: 'Manager Dashboard',
+          style: AppTypography.heading,
+          color: Colors.white,
+        ),
         centerTitle: true,
+        elevation: 2,
+        backgroundColor: AppTheme.buildingBlue,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -35,232 +51,742 @@ class ManagerPanelView extends GetView<ManagerPanelController> {
         ],
       ),
       body: Obx(() {
-        // Wait for data to load
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                ),
+                const SizedBox(height: 16),
+                CommonText(
+                  text: 'Loading your dashboard...',
+                  style: AppTypography.medium,
+                  color: AppTheme.lightGray,
+                ),
+              ],
+            ),
+          );
         }
 
         final manager = controller.manager.value;
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.04,
-            vertical: screenHeight * 0.02,
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppTheme.buildingBlue.withOpacity(0.05), Colors.white],
+            ),
           ),
-          child: ListView(
-            children: [
-              // Display Manager Info
-              Text(
-                "Name: ${manager.name}",
-                style: TextStyle(
-                  fontSize:
-                      isPortrait ? screenHeight * 0.025 : screenWidth * 0.025,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              Text(
-                "Email: ${manager.email}",
-                style: TextStyle(
-                  fontSize:
-                      isPortrait ? screenHeight * 0.02 : screenWidth * 0.02,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              Text(
-                "CNIC: ${manager.cnic}",
-                style: TextStyle(
-                  fontSize:
-                      isPortrait ? screenHeight * 0.02 : screenWidth * 0.02,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.02),
-              // Responsive button row
-              isPortrait
-                  ? Column(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: screenHeight * 0.02,
+            ),
+            child: ListView(
+              children: [
+                // Manager Profile Card - Fixed for text overflow
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildResponsiveButton(
-                          context,
-                          icon: Icons.person_add,
-                          label: "Register Employee",
-                          onPressed: () =>
-                              _showEmployeeRegistrationForm(context),
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor:
+                              AppTheme.buildingBlue.withOpacity(0.2),
+                          child: Icon(Icons.person,
+                              size: 35, color: AppTheme.buildingBlue),
                         ),
-                        SizedBox(height: screenHeight * 0.01),
-                        _buildResponsiveButton(
-                          context,
-                          icon: Icons.people,
-                          label: "View Employees",
-                          onPressed: () =>
-                              Get.to(() => EmployeeCredentialsScreen()),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildResponsiveButton(
-                          context,
-                          icon: Icons.person_add,
-                          label: "Register Employee",
-                          onPressed: () =>
-                              _showEmployeeRegistrationForm(context),
-                        ),
-                        _buildResponsiveButton(
-                          context,
-                          icon: Icons.people,
-                          label: "View Employees",
-                          onPressed: () =>
-                              Get.to(() => EmployeeCredentialsScreen()),
-                        ),
-                      ],
-                    ),
-              SizedBox(height: screenHeight * 0.02),
-
-              // Display Pending Projects (Including Approved, Doing, and Completed)
-              Text(
-                "Pending / Approved / Doing / Completed Projects",
-                style: TextStyle(
-                  fontSize:
-                      isPortrait ? screenHeight * 0.025 : screenWidth * 0.025,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-
-              // Projects list
-              ...controller.projects.map((project) {
-                var tasksList = <dynamic>[];
-                if (project['tasks'] is List) {
-                  tasksList = project['tasks'] as List;
-                } else if (project['tasks'] is Map) {
-                  // Convert map to list if needed
-                  tasksList = (project['tasks'] as Map).values.toList();
-                }
-                return Card(
-                  margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-                  child: ListTile(
-                    title: Text(
-                      project['projectName'] ?? 'No Name',
-                      style: TextStyle(
-                        fontSize: isPortrait
-                            ? screenHeight * 0.02
-                            : screenWidth * 0.02,
-                      ),
-                    ),
-                    subtitle: Text(
-                      project['clientName'] ?? 'No Client',
-                      style: TextStyle(
-                        fontSize: isPortrait
-                            ? screenHeight * 0.018
-                            : screenWidth * 0.018,
-                      ),
-                    ),
-                    trailing: SizedBox(
-                      width: screenWidth * 0.25,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (project['status'] == 'doing' ||
-                              project['status'] == 'progress')
-                            Column(
-                              children: [
-                                Text(
-                                  '${project['progress'] ?? 0}%',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: isPortrait
-                                        ? screenHeight * 0.018
-                                        : screenWidth * 0.018,
-                                    color: Colors.green,
-                                  ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CommonText(
+                                text: manager.name,
+                                style: AppTypography.heading.copyWith(
+                                  fontSize: isPortrait
+                                      ? screenHeight * 0.025
+                                      : screenWidth * 0.025,
                                 ),
-                                SizedBox(height: screenHeight * 0.005),
-                                LinearProgressIndicator(
-                                  value: (project['progress'] ?? 0) / 100,
-                                  color: Colors.green,
-                                  backgroundColor: Colors.grey[300],
-                                ),
-                              ],
-                            )
-                          else if (project['status'] == 'completed')
-                            Text(
-                              "Completed",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: isPortrait
-                                    ? screenHeight * 0.018
-                                    : screenWidth * 0.018,
-                                color: Colors.blue,
+                                color: AppTheme.deepBlack,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            )
-                          else
-                            Text(
-                              "Ready to create",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: isPortrait
-                                    ? screenHeight * 0.018
-                                    : screenWidth * 0.018,
-                                color: Colors.blue,
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.email,
+                                      size: 16, color: AppTheme.buildingBlue),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: CommonText(
+                                      text: manager.email,
+                                      style: AppTypography.regular.copyWith(
+                                        fontSize: isPortrait
+                                            ? screenHeight * 0.018
+                                            : screenWidth * 0.018,
+                                      ),
+                                      color:
+                                          AppTheme.deepBlack.withOpacity(0.7),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.badge,
+                                      size: 16, color: AppTheme.buildingBlue),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: CommonText(
+                                      text: "CNIC: ${manager.cnic}",
+                                      style: AppTypography.regular.copyWith(
+                                        fontSize: isPortrait
+                                            ? screenHeight * 0.018
+                                            : screenWidth * 0.018,
+                                      ),
+                                      color:
+                                          AppTheme.deepBlack.withOpacity(0.7),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+
+                // Quick Actions Section - Improved UI
+                Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CommonText(
+                          text: "Quick Actions",
+                          style: AppTypography.subheading,
+                          color: AppTheme.buildingBlue,
+                        ),
+                        const Divider(height: 24),
+                        isPortrait
+                            ? Column(
+                                children: [
+                                  _buildImprovedActionButton(
+                                    context,
+                                    icon: Icons.person_add,
+                                    label: "Register Employee",
+                                    description: "Add new team members",
+                                    color: AppTheme.primaryGreen,
+                                    onPressed: () =>
+                                        _showEmployeeRegistrationForm(context),
+                                  ),
+                                  SizedBox(height: screenHeight * 0.015),
+                                  _buildImprovedActionButton(
+                                    context,
+                                    icon: Icons.people,
+                                    label: "View Employees",
+                                    description: "Manage your team",
+                                    color: AppTheme.buildingBlue,
+                                    onPressed: () => Get.to(
+                                        () => EmployeeCredentialsScreen()),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildImprovedActionButton(
+                                      context,
+                                      icon: Icons.person_add,
+                                      label: "Register Employee",
+                                      description: "Add new team members",
+                                      color: AppTheme.primaryGreen,
+                                      onPressed: () =>
+                                          _showEmployeeRegistrationForm(
+                                              context),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildImprovedActionButton(
+                                      context,
+                                      icon: Icons.people,
+                                      label: "View Employees",
+                                      description: "Manage your team",
+                                      color: AppTheme.buildingBlue,
+                                      onPressed: () => Get.to(
+                                          () => EmployeeCredentialsScreen()),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+
+                // Projects section - Fixed for Responsive Layout
+                Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            CommonText(
+                              text: "Projects",
+                              style: AppTypography.subheading,
+                              color: AppTheme.buildingBlue,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.buildingBlue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: CommonText(
+                                text:
+                                    "${controller.filteredProjects.length} Projects",
+                                style: AppTypography.medium,
+                                color: AppTheme.buildingBlue,
                               ),
                             ),
-                        ],
-                      ),
+                          ],
+                        ),
+                        const Divider(height: 24),
+
+                        // Project filters
+                        Obx(() => SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildFilterChip("All",
+                                      controller.currentFilter.value == "All"),
+                                  _buildFilterChip(
+                                      "Pending",
+                                      controller.currentFilter.value ==
+                                          "Pending"),
+                                  _buildFilterChip(
+                                      "Approved",
+                                      controller.currentFilter.value ==
+                                          "Approved"),
+                                  _buildFilterChip(
+                                      "Completed",
+                                      controller.currentFilter.value ==
+                                          "Completed"),
+                                ],
+                              ),
+                            )),
+                        const SizedBox(height: 16),
+
+                        // Inside the projects list mapping, update the onTap logic and add conditional UI for approved status
+                        ...controller.filteredProjects.map((project) {
+                          // Status badge color
+                          Color statusColor;
+                          IconData statusIcon;
+                          String statusText;
+
+                          if (project['status'] == 'completed') {
+                            statusColor = AppTheme.primaryGreen;
+                            statusIcon = Icons.check_circle;
+                            statusText = "Completed";
+                          } else if (project['status'] == 'approved') {
+                            statusColor = AppTheme.accentOrange;
+                            statusIcon = Icons.thumb_up;
+                            statusText = "Approved";
+                          } else if (project['status'] == 'doing' ||
+                              project['status'] == 'progress') {
+                            statusColor = AppTheme.buildingBlue;
+                            statusIcon = Icons.engineering;
+                            statusText = "In Progress";
+                          } else {
+                            statusColor = AppTheme.buildingBlue;
+                            statusIcon = Icons.queue;
+                            statusText = "Pending";
+                          }
+
+                          return Card(
+                            elevation: 1,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(color: AppTheme.lightGray),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                if (project['status'] == 'approved') {
+                                  Get.to(() => ProjectCreationScreen(
+                                      existingProject: project));
+                                } else if (project['status'] == 'progress') {
+                                  Get.to(() => ProjectProgressScreen(
+                                        projectId: project['id'],
+                                        projectData: project,
+                                      ));
+                                } else {
+                                  Get.to(() => ProjectDetailsScreen(
+                                        project: project,
+                                        projectId: project['id'],
+                                      ));
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              CommonText(
+                                                text: project['projectName'] ??
+                                                    'Unnamed Project',
+                                                style: AppTypography.medium
+                                                    .copyWith(
+                                                  fontSize: isPortrait
+                                                      ? screenHeight * 0.02
+                                                      : screenWidth * 0.02,
+                                                ),
+                                                color: AppTheme.deepBlack,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.person,
+                                                      size: 14,
+                                                      color: AppTheme
+                                                          .buildingBlue
+                                                          .withOpacity(0.7)),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: CommonText(
+                                                      text: project[
+                                                              'clientName'] ??
+                                                          'No Client',
+                                                      style: AppTypography
+                                                          .regular
+                                                          .copyWith(
+                                                        fontSize: isPortrait
+                                                            ? screenHeight *
+                                                                0.016
+                                                            : screenWidth *
+                                                                0.016,
+                                                      ),
+                                                      color: AppTheme.deepBlack
+                                                          .withOpacity(0.6),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: statusColor.withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                                color: statusColor
+                                                    .withOpacity(0.3)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(statusIcon,
+                                                  size: 14, color: statusColor),
+                                              const SizedBox(width: 4),
+                                              CommonText(
+                                                text: statusText,
+                                                style: AppTypography.small,
+                                                color: statusColor,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // Show Create Project button for approved projects
+                                    if (project['status'] == 'approved')
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                Get.to(() =>
+                                                    ProjectCreationScreen(
+                                                        existingProject:
+                                                            project));
+                                              },
+                                              icon: Icon(Icons.add_task,
+                                                  color: Colors.white,
+                                                  size: 16),
+                                              label: CommonText(
+                                                text: "Create Project",
+                                                style: AppTypography.medium
+                                                    .copyWith(fontSize: 14),
+                                                color: Colors.white,
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppTheme.primaryGreen,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                    // Progress bar for pending/in-progress projects
+                                    if (project['status'] != 'completed' &&
+                                        project['status'] != 'approved')
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        CommonText(
+                                                          text: "Progress",
+                                                          style: AppTypography
+                                                              .small,
+                                                          color: AppTheme
+                                                              .deepBlack
+                                                              .withOpacity(0.6),
+                                                        ),
+                                                        CommonText(
+                                                          text:
+                                                              "${_calculateProjectProgress(project)}%",
+                                                          style: AppTypography
+                                                              .small
+                                                              .copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold),
+                                                          color: AppTheme
+                                                              .buildingBlue,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                      child:
+                                                          LinearProgressIndicator(
+                                                        value:
+                                                            _calculateProjectProgress(
+                                                                    project) /
+                                                                100,
+                                                        backgroundColor:
+                                                            AppTheme.lightGray,
+                                                        valueColor:
+                                                            AlwaysStoppedAnimation<
+                                                                Color>(
+                                                          _getProgressColor(
+                                                              _calculateProjectProgress(
+                                                                  project)),
+                                                        ),
+                                                        minHeight: 6,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+
+                        if (controller.filteredProjects.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                Icon(Icons.folder_off,
+                                    size: 48, color: AppTheme.lightGray),
+                                const SizedBox(height: 16),
+                                CommonText(
+                                  text: "No projects available",
+                                  style: AppTypography.medium,
+                                  color: AppTheme.deepBlack.withOpacity(0.6),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                    // Updated onTap for handling completed projects
-                    // Inside the ManagerPanelView onTap method
-                    onTap: () {
-                      if (project['status'] == 'approved') {
-                        Get.to(() =>
-                            ProjectCreationScreen(existingProject: project));
-                      } else if (project['status'] == 'progress') {
-                        Get.to(() => ProjectProgressScreen(
-                              projectId: project['id'],
-                              projectData: project,
-                            ));
-                      } else if (project['status'] == 'completed' ||
-                          project['status'] == 'doing') {
-                        // Ensure you pass both project and projectId
-                        Get.to(() => ProjectDetailsScreen(
-                              project: project,
-                              projectId: project[
-                                  'id'], // Make sure to pass the projectId here
-                            ));
-                      }
-                    },
                   ),
-                );
-              }).toList(),
-            ],
+                ),
+              ],
+            ),
           ),
         );
       }),
     );
   }
 
-  Widget _buildResponsiveButton(
+  // Improved action button with better UI and text overflow handling
+  Widget _buildImprovedActionButton(
     BuildContext context, {
     required IconData icon,
     required String label,
+    required String description,
     required VoidCallback onPressed,
+    required Color color,
   }) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-
-    return SizedBox(
-      width: isPortrait ? double.infinity : null,
-      child: ElevatedButton.icon(
-        icon: Icon(icon, size: screenHeight * 0.025),
-        label: Padding(
-          padding: EdgeInsets.all(screenHeight * 0.01),
-          child: Text(
-            label,
-            style: TextStyle(fontSize: screenHeight * 0.018),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withOpacity(0.5)),
+            borderRadius: BorderRadius.circular(12),
+            color: color.withOpacity(0.08),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CommonText(
+                      text: label,
+                      style: AppTypography.medium,
+                      color: color,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    CommonText(
+                      text: description,
+                      style: AppTypography.small,
+                      color: AppTheme.deepBlack.withOpacity(0.6),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: color),
+            ],
           ),
         ),
-        onPressed: onPressed,
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: CommonText(
+          text: label,
+          style: AppTypography.small,
+          color: isSelected ? AppTheme.buildingBlue : AppTheme.deepBlack,
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            controller.filterProjects(label);
+          }
+        },
+        backgroundColor: AppTheme.lightGray,
+        selectedColor: AppTheme.buildingBlue.withOpacity(0.1),
+        checkmarkColor: AppTheme.buildingBlue,
+        labelStyle: TextStyle(
+          color: isSelected ? AppTheme.buildingBlue : AppTheme.deepBlack,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for project progress calculation
+  int _calculateProjectProgress(Map<String, dynamic> project) {
+    // Get the taskVideos/taskPhotos map from project data
+    final taskMedia =
+        (project['taskVideos'] ?? project['taskPhotos']) as Map? ?? {};
+
+    // Define the standard tasks that are used to calculate progress
+    final List<String> standardTaskKeys = [
+      'Structure',
+      'Panel Installation',
+      'Inverter installation',
+      'Wiring',
+      'Completion'
+    ];
+
+    // Count completed tasks
+    int completedTasks = 0;
+    for (String taskKey in standardTaskKeys) {
+      final mediaUrl = taskMedia[taskKey]?.toString();
+      if (mediaUrl != null && mediaUrl.isNotEmpty) {
+        completedTasks++;
+      }
+    }
+
+    // Calculate and return percentage
+    return ((completedTasks / standardTaskKeys.length) * 100).round();
+  }
+
+  // Get color based on progress percentage
+  Color _getProgressColor(int progressPercentage) {
+    if (progressPercentage < 30) {
+      return AppTheme.accentOrange;
+    } else if (progressPercentage < 70) {
+      return AppTheme.buildingBlue;
+    } else {
+      return AppTheme.primaryGreen;
+    }
+  }
+
+  void _showEmployeeRegistrationForm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            constraints: BoxConstraints(
+              maxWidth: 500,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10.0,
+                  offset: const Offset(0.0, 10.0),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "Register Employee",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.buildingBlue,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: AppTheme.deepBlack),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: const EmployeeRegistrationForm(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -278,71 +804,250 @@ class ProjectProgressScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final progress = projectData['progress'] ?? 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Project Progress"),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle("Basic Information"),
-            _buildDetailRow("Project Name", projectData['projectName']),
-            _buildDetailRow("Client Name", projectData['clientName']),
-            _buildDetailRow("Property Type", projectData['propertyType']),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue[50]!, Colors.white],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Project summary card
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.solar_power,
+                              color: Colors.blue[800],
+                              size: 36,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  projectData['projectName'] ??
+                                      'Unnamed Project',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.person,
+                                        size: 16, color: Colors.grey),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      projectData['clientName'] ?? 'No Client',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.category,
+                                        size: 16, color: Colors.grey),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      projectData['propertyType'] ??
+                                          'Not specified',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      // Progress bar
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Progress Status",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                "$progress%",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: progress == 100
+                                      ? Colors.green
+                                      : Colors.blue[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: progress / 100,
+                              minHeight: 12,
+                              backgroundColor: Colors.grey[200],
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                progress == 100 ? Colors.green : Colors.blue,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          _buildProgressStepsIndicator(progress),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
 
-            // Display Tasks
-            _buildSectionTitle("Tasks"),
-            ..._buildTasksList(),
+              // Tasks Section
+              Text(
+                "Project Tasks",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[800],
+                ),
+              ),
+              SizedBox(height: 12),
+              ..._buildTasksList(),
 
-            // Display Progress Indicator for Completed or Progress Tasks
-            _buildSectionTitle("Progress"),
-            _buildProgressIndicator(),
-            _buildUpdateProgressButton(),
-          ],
+              // Update progress button
+              SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.update, color: Colors.white),
+                  label: const Text(
+                    "Update Progress",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.blue[700],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () =>
+                      _updateProgress((projectData['progress'] ?? 0) + 10),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Function to build section titles
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.blue,
-        ),
-      ),
+  Widget _buildProgressStepsIndicator(int progress) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildProgressStep("Start", 0, progress),
+        _buildProgressConnector(progress > 0),
+        _buildProgressStep("25%", 25, progress),
+        _buildProgressConnector(progress >= 25),
+        _buildProgressStep("50%", 50, progress),
+        _buildProgressConnector(progress >= 50),
+        _buildProgressStep("75%", 75, progress),
+        _buildProgressConnector(progress >= 75),
+        _buildProgressStep("Done", 100, progress),
+      ],
     );
   }
 
-  // Function to build a row for displaying task details
-  Widget _buildDetailRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              "$label:",
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
+  Widget _buildProgressStep(String label, int value, int currentProgress) {
+    final bool isCompleted = currentProgress >= value;
+    final bool isCurrent = currentProgress >= value &&
+        (value == 100 ? currentProgress == 100 : currentProgress < value + 25);
+
+    return Column(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isCompleted
+                ? (isCurrent ? Colors.green : Colors.blue)
+                : Colors.grey[300],
+            border:
+                isCurrent ? Border.all(color: Colors.green, width: 2) : null,
           ),
-          Expanded(
-            child: Text(
-              value?.toString() ?? 'Not specified',
-              style: const TextStyle(color: Colors.grey),
-            ),
+          child: isCompleted
+              ? Icon(Icons.check, size: 16, color: Colors.white)
+              : null,
+        ),
+        SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isCompleted
+                ? (isCurrent ? Colors.green : Colors.blue)
+                : Colors.grey[600],
+            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressConnector(bool isActive) {
+    return Expanded(
+      child: Container(
+        height: 3,
+        color: isActive ? Colors.blue : Colors.grey[300],
       ),
     );
   }
@@ -353,59 +1058,182 @@ class ProjectProgressScreen extends StatelessWidget {
     // Ensure tasks is a list
     if (projectData['tasks'] != null) {
       var tasks = projectData['tasks'];
+      List<Map<String, dynamic>> tasksList = [];
 
       if (tasks is List) {
         for (var task in tasks) {
-          bool isCompleted = task['status'] == 'completed';
-          taskWidgets.add(
-            ListTile(
-              title: Text(task['name'] ?? 'Unnamed Task'),
-              subtitle: isCompleted
-                  ? Text("Completed", style: TextStyle(color: Colors.green))
-                  : Text("In Progress", style: TextStyle(color: Colors.orange)),
-              onTap: () {
-                // Show task details
-                if (isCompleted && task['taskVideos'] != null) {
-                  _showTaskVideos(Map<String, dynamic>.from(task));
-                } else {
-                  Get.snackbar("Task In Progress", "Task is still in progress");
-                }
-              },
-            ),
-          );
+          if (task is Map) {
+            tasksList.add(Map<String, dynamic>.from(task));
+          }
         }
       } else if (tasks is Map) {
         // Handle if tasks is a map instead of a list
         tasks.forEach((key, task) {
           if (task is Map) {
-            bool isCompleted = task['status'] == 'completed';
-            taskWidgets.add(
-              ListTile(
-                title: Text(task['name'] ?? key ?? 'Unnamed Task'),
-                subtitle: isCompleted
-                    ? Text("Completed", style: TextStyle(color: Colors.green))
-                    : Text("In Progress",
-                        style: TextStyle(color: Colors.orange)),
-                onTap: () {
-                  // Show task details
-                  if (isCompleted && task['taskVideos'] != null) {
-                    _showTaskVideos(Map<String, dynamic>.from(task));
-                  } else {
-                    Get.snackbar(
-                        "Task In Progress", "Task is still in progress");
-                  }
-                },
-              ),
-            );
+            Map<String, dynamic> taskMap = Map<String, dynamic>.from(task);
+            taskMap['key'] = key; // Save original key
+            tasksList.add(taskMap);
           }
         });
+      }
+
+      // Sort tasks by completion status (completed tasks at the bottom)
+      tasksList.sort((a, b) {
+        bool isACompleted = a['status'] == 'completed';
+        bool isBCompleted = b['status'] == 'completed';
+        if (isACompleted == isBCompleted) return 0;
+        return isACompleted ? 1 : -1;
+      });
+
+      for (var task in tasksList) {
+        bool isCompleted = task['status'] == 'completed';
+
+        // Determine task icon
+        IconData taskIcon;
+        if (task['name']?.toString().toLowerCase().contains('structure') ??
+            false) {
+          taskIcon = Icons.architecture;
+        } else if (task['name']?.toString().toLowerCase().contains('panel') ??
+            false) {
+          taskIcon = Icons.solar_power;
+        } else if (task['name']
+                ?.toString()
+                .toLowerCase()
+                .contains('inverter') ??
+            false) {
+          taskIcon = Icons.electrical_services;
+        } else if (task['name']?.toString().toLowerCase().contains('wiring') ??
+            false) {
+          taskIcon = Icons.cable;
+        } else if (task['name']
+                ?.toString()
+                .toLowerCase()
+                .contains('completion') ??
+            false) {
+          taskIcon = Icons.check_circle;
+        } else {
+          taskIcon = Icons.build;
+        }
+
+        taskWidgets.add(
+          Card(
+            elevation: 2,
+            margin: EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: isCompleted
+                    ? Colors.green.withOpacity(0.3)
+                    : Colors.orange.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () {
+                if (isCompleted && task['taskVideos'] != null) {
+                  _showTaskVideos(Map<String, dynamic>.from(task));
+                } else {
+                  Get.snackbar(
+                    "Task In Progress",
+                    "This task is still being worked on",
+                    backgroundColor: Colors.orange.withOpacity(0.1),
+                    colorText: Colors.orange[800],
+                    icon: Icon(Icons.info_outline, color: Colors.orange[800]),
+                  );
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        taskIcon,
+                        color: isCompleted ? Colors.green : Colors.orange,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task['name'] ?? 'Unnamed Task',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                isCompleted
+                                    ? Icons.check_circle
+                                    : Icons.timelapse,
+                                size: 14,
+                                color:
+                                    isCompleted ? Colors.green : Colors.orange,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                isCompleted ? "Completed" : "In Progress",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isCompleted
+                                      ? Colors.green
+                                      : Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
       }
     }
 
     if (taskWidgets.isEmpty) {
-      taskWidgets.add(ListTile(
-        title: Text("No tasks available"),
-      ));
+      taskWidgets.add(
+        Container(
+          padding: EdgeInsets.all(30),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.assignment_late, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                "No tasks available for this project",
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return taskWidgets;
@@ -581,11 +1409,36 @@ class _EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
 
   // Function to handle form submission
   Future<void> _registerEmployee() async {
-    if (_nameController.text.isEmpty ||
-        _cnicController.text.isEmpty ||
-        _selectedDesignation == null) {
-      Get.snackbar("Error", "Name, CNIC, and designation are required",
-          backgroundColor: Colors.red);
+    if (_nameController.text.trim().isEmpty) {
+      Get.snackbar(
+        "Error",
+        "Please enter employee name",
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    if (_cnicController.text.trim().isEmpty) {
+      Get.snackbar(
+        "Error",
+        "Please enter employee CNIC",
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    if (_selectedDesignation == null) {
+      Get.snackbar(
+        "Error",
+        "Please select employee designation",
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return;
     }
 
@@ -609,9 +1462,26 @@ class _EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
       });
 
       Get.back(); // Close the dialog after successful registration
+
+      Get.snackbar(
+        "Success",
+        "Employee registered successfully",
+        backgroundColor: AppTheme.primaryGreen,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(10),
+        borderRadius: 8,
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+      );
     } catch (e) {
-      Get.snackbar("Error", "Failed to register employee: $e",
-          backgroundColor: Colors.red);
+      Get.snackbar(
+        "Error",
+        "Failed to register employee: $e",
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -620,54 +1490,153 @@ class _EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _cnicController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _nameController,
-          decoration: const InputDecoration(
-            labelText: "Employee Name",
-            border: OutlineInputBorder(),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Name input field
+          _buildInputField(
+            controller: _nameController,
+            label: "Employee Name",
+            icon: Icons.person,
+            hint: "Enter employee full name",
           ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _cnicController,
-          decoration: const InputDecoration(
-            labelText: "CNIC",
-            border: OutlineInputBorder(),
+
+          const SizedBox(height: 16),
+
+          // CNIC input field
+          _buildInputField(
+            controller: _cnicController,
+            label: "CNIC Number",
+            icon: Icons.badge,
+            hint: "Enter 13-digit CNIC without dashes",
+            keyboardType: TextInputType.number,
+            inputFormatter: FilteringTextInputFormatter.digitsOnly,
+            maxLength: 13,
           ),
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          value: _selectedDesignation,
-          decoration: const InputDecoration(
-            labelText: "Employee Designation",
-            border: OutlineInputBorder(),
-          ),
-          items: _designations.map((String designation) {
-            return DropdownMenuItem<String>(
-              value: designation,
-              child: Text(designation),
-            );
-          }).toList(),
-          onChanged: (String? value) {
-            setState(() {
-              _selectedDesignation = value;
-            });
-          },
-          hint: const Text("Select Designation"),
-        ),
-        const SizedBox(height: 20),
-        _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : ElevatedButton(
-                onPressed: _registerEmployee,
-                child: const Text("Register Employee"),
+
+          const SizedBox(height: 16),
+
+          // Designation dropdown
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedDesignation,
+              decoration: InputDecoration(
+                labelText: "Employee Designation",
+                prefixIcon: Icon(
+                  Icons.work,
+                  color: AppTheme.buildingBlue,
+                ),
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-      ],
+              items: _designations.map((String designation) {
+                return DropdownMenuItem<String>(
+                  value: designation,
+                  child: Text(designation),
+                );
+              }).toList(),
+              onChanged: (String? value) {
+                setState(() {
+                  _selectedDesignation = value;
+                });
+              },
+              hint: const Text("Select Designation"),
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.buildingBlue),
+              isExpanded: true,
+              dropdownColor: Colors.white,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Submit button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                    ),
+                  )
+                : ElevatedButton(
+                    onPressed: _registerEmployee,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.person_add),
+                        SizedBox(width: 12),
+                        Text(
+                          "Register Employee",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+    TextInputFormatter? inputFormatter,
+    int? maxLength,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: AppTheme.buildingBlue),
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          counterText: "",
+        ),
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatter != null ? [inputFormatter] : null,
+        maxLength: maxLength,
+      ),
     );
   }
 }
@@ -761,7 +1730,7 @@ class EmployeeCredentialsScreen extends StatelessWidget {
 }
 
 class ProjectDetailsScreen extends StatelessWidget {
-  final Map<String, dynamic> project;
+  final Map project;
   final String projectId;
 
   const ProjectDetailsScreen({
@@ -773,20 +1742,325 @@ class ProjectDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final projectName = project['projectName']?.toString() ?? 'Unnamed Project';
+    final clientName = project['clientName']?.toString() ?? 'No Client';
+    final projectStatus = project['status']?.toString() ?? '';
+    final isCompleted = projectStatus == 'completed';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(projectName),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
       ),
-      body: _buildTaskStructure(context),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue[50]!, Colors.white],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            // Project Info Card
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.solar_power,
+                            color: Colors.blue[800],
+                            size: 32,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                projectName,
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.person,
+                                      size: 16, color: Colors.grey),
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      clientName,
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.category,
+                                      size: 16, color: Colors.grey),
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      project['propertyType'] ??
+                                          'Not specified',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? Colors.green[100]
+                                : Colors.blue[100],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            isCompleted ? "Completed" : "In Progress",
+                            style: TextStyle(
+                              color: isCompleted
+                                  ? Colors.green[800]
+                                  : Colors.blue[800],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
+            // Technical Details Card - New card to display all project data
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _showProjectDetailsDialog(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.info_outline,
+                          color: Colors.blue[800],
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Technical Details",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "View complete project specifications",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.blue[800],
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
+            // Project Progress Card - Show only for pending projects
+            if (!isCompleted)
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Project Progress",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Calculate project progress
+                      Builder(builder: (context) {
+                        // Get the taskVideos/taskPhotos map from project data
+                        final taskMedia = (project['taskVideos'] ??
+                                project['taskPhotos']) as Map? ??
+                            {};
+
+                        // Define the standard tasks
+                        final List<String> standardTaskKeys = [
+                          'Structure',
+                          'Panel Installation',
+                          'Inverter installation', // Note lowercase 'i'
+                          'Wiring',
+                          'Completion'
+                        ];
+
+                        // Count completed tasks
+                        int completedTasks = 0;
+                        for (String taskKey in standardTaskKeys) {
+                          final mediaUrl = taskMedia[taskKey]?.toString();
+                          if (mediaUrl != null && mediaUrl.isNotEmpty) {
+                            completedTasks++;
+                          }
+                        }
+
+                        // Calculate percentage
+                        final progressPercentage =
+                            ((completedTasks / standardTaskKeys.length) * 100)
+                                .round();
+
+                        // Determine color based on progress
+                        Color progressColor;
+                        if (progressPercentage < 30) {
+                          progressColor = Colors.orange;
+                        } else if (progressPercentage < 70) {
+                          progressColor = Colors.blue;
+                        } else {
+                          progressColor = Colors.green;
+                        }
+
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "$completedTasks of ${standardTaskKeys.length} tasks completed",
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: progressColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    "$progressPercentage%",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: progressColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: progressPercentage / 100,
+                                backgroundColor: Colors.grey[200],
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    progressColor),
+                                minHeight: 10,
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            SizedBox(height: 20),
+
+            // Project Tasks
+            Text(
+              'Project Tasks',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+
+            // Task list with improved UI
+            _buildTaskList(),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildTaskStructure(BuildContext context) {
-    // Get the taskVideos map from project data
-    final taskVideos = (project['taskVideos'] as Map<String, dynamic>?) ?? {};
+  Widget _buildTaskList() {
+    // Get the taskVideos/taskPhotos map from project data
+    final taskMedia =
+        (project['taskVideos'] ?? project['taskPhotos']) as Map? ?? {};
 
+    // Standard tasks list - matches exactly what employees see
     final List<Map<String, dynamic>> standardTasks = [
+      {
+        'name': 'Structure',
+        'key': 'Structure',
+        'icon': Icons.construction,
+      },
       {
         'name': 'Panel Installation',
         'key': 'Panel Installation',
@@ -794,8 +2068,7 @@ class ProjectDetailsScreen extends StatelessWidget {
       },
       {
         'name': 'Inverter Installation',
-        'key':
-            'Inverter installation', // Note: matches your Firestore key exactly
+        'key': 'Inverter installation', // Note lowercase 'i' to match Firestore
         'icon': Icons.electric_bolt,
       },
       {
@@ -810,38 +2083,69 @@ class ProjectDetailsScreen extends StatelessWidget {
       },
     ];
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        const Text(
-          'Project Tasks',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        ...standardTasks.map((task) {
-          final taskKey = task['key'] as String;
-          final videoUrl = taskVideos[taskKey]?.toString();
-          final hasVideo = videoUrl != null && videoUrl.isNotEmpty;
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: standardTasks.length,
+      itemBuilder: (context, index) {
+        final task = standardTasks[index];
+        final taskKey = task['key'] as String;
+        final mediaUrl = taskMedia[taskKey]?.toString();
+        final isCompleted = mediaUrl != null && mediaUrl.isNotEmpty;
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: ListTile(
-              leading: Icon(task['icon'] as IconData),
-              title: Text(task['name'] as String),
-              subtitle: Text('Status: ${hasVideo ? 'COMPLETED' : 'PENDING'}'),
-              trailing: hasVideo
-                  ? const Icon(Icons.videocam, color: Colors.green)
-                  : const Icon(Icons.videocam_off, color: Colors.grey),
-              onTap: hasVideo
-                  ? () {
-                      // Pass context explicitly
-                      _playVideo(context, videoUrl!);
-                    }
-                  : null,
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: isCompleted
+                  ? Colors.green.withOpacity(0.3)
+                  : Colors.orange.withOpacity(0.3),
+              width: 1,
             ),
-          );
-        }).toList(),
-      ],
+          ),
+          child: ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isCompleted
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                task['icon'] as IconData,
+                color: isCompleted ? Colors.green : Colors.orange,
+              ),
+            ),
+            title: Text(
+              task['name'] as String,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              'Status: ${isCompleted ? 'COMPLETED' : 'IN PROGRESS'}',
+              style: TextStyle(
+                color: isCompleted ? Colors.green : Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            trailing: isCompleted
+                ? Icon(Icons.check_circle, color: Colors.green)
+                : Icon(Icons.pending, color: Colors.grey),
+            onTap:
+                isCompleted && mediaUrl != null && mediaUrl.startsWith('http')
+                    ? () {
+                        if (mediaUrl.contains('.mp4')) {
+                          _playVideo(context, mediaUrl);
+                        }
+                      }
+                    : null,
+          ),
+        );
+      },
     );
   }
 
@@ -853,6 +2157,284 @@ class ProjectDetailsScreen extends StatelessWidget {
       ),
     );
   }
+
+  // Method to show project details dialog
+  void _showProjectDetailsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[700],
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.white),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Technical Specifications',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(16),
+                    child: _buildProjectDetailsContent(),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Build the content for the project details dialog
+  Widget _buildProjectDetailsContent() {
+    // Define sections for better organization
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Solar Panel Details'),
+        _buildDetailItem('PV Module', '${project['pvModule']}'),
+        _buildDetailItem('Brand', '${project['brand']}'),
+        _buildDetailItem('Size', '${project['size']}'),
+        _buildDetailItem('Price Per Watt', '${project['pricePerWatt']}'),
+        _buildDetailItem('Panel Quantity', '${project['panelQuantity']}'),
+        _buildDetailItem('Total kW', '${project['totalKw']}'),
+        SizedBox(height: 16),
+        _buildSectionTitle('Inverter Details'),
+        _buildDetailItem('Type', '${project['inverterType']}'),
+        _buildDetailItem('kW Size', '${project['kwSize']}'),
+        _buildDetailItem('Brand', '${project['inverterBrand']}'),
+        _buildDetailItem('Price', '${project['inverterPrice']}'),
+        _buildDetailItem('Quantity', '${project['inverterQuantity']}'),
+        SizedBox(height: 16),
+        _buildSectionTitle('Structure Details'),
+        _buildDetailItem('Type', '${project['structureType']}'),
+        _buildDetailItem('Price', '${project['structurePrice']}'),
+        SizedBox(height: 16),
+        _buildSectionTitle('Wiring Details'),
+        _buildDetailItem('Wire Size', '${project['wireSize']}'),
+        _buildDetailItem('Wire Length', '${project['wireLength']}'),
+        _buildDetailItem('Wire Price/Meter', '${project['wirePricePerMeter']}'),
+        SizedBox(height: 16),
+        _buildSectionTitle('Components'),
+        _buildMapDetailItem('Breakers', project['selectedBreakers'],
+            project['breakerPrices'], project['breakerQuantities']),
+        _buildMapDetailItem('Earthing', project['selectedEarthing'],
+            project['earthingPrices'], project['earthingQuantities']),
+        _buildMapDetailItem('Casing', project['selectedCasing'],
+            project['casingPrices'], project['casingQuantities']),
+        if (project['installBattery'] == true) ...[
+          SizedBox(height: 16),
+          _buildSectionTitle('Battery Details'),
+          _buildDetailItem('Battery Type', '${project['batteryType']}'),
+          _buildDetailItem('Battery Brand', '${project['batteryBrand']}'),
+          _buildDetailItem('Battery Quantity', '${project['batteryQuantity']}'),
+          _buildDetailItem('Battery Price', '${project['batteryPrice']}'),
+        ],
+        SizedBox(height: 16),
+        _buildSectionTitle('Project Timeline'),
+        _buildDetailItem('Start Date', _formatDate(project['startDate'])),
+        _buildDetailItem('End Date', _formatDate(project['endDate'])),
+      ],
+    );
+  }
+
+  // Format timestamp to readable date
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'Not specified';
+
+    try {
+      // For handling Firestore Timestamp objects
+      if (timestamp.toString().startsWith('Timestamp(')) {
+        // Extract seconds from the Timestamp string format
+        final regex = RegExp(r'seconds=(\d+)');
+        final match = regex.firstMatch(timestamp.toString());
+        if (match != null && match.groupCount >= 1) {
+          final seconds = int.parse(match.group(1)!);
+          final dateTime = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+          return _formatDateTime(dateTime);
+        }
+      }
+
+      // For milliseconds timestamp as int
+      if (timestamp is int) {
+        final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+        return _formatDateTime(dateTime);
+      }
+
+      // For ISO format date strings
+      if (timestamp is String && timestamp.contains('T')) {
+        try {
+          final dateTime = DateTime.parse(timestamp);
+          return _formatDateTime(dateTime);
+        } catch (_) {}
+      }
+
+      // Fall back to simple string
+      return timestamp.toString();
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  // Helper to format DateTime objects into readable strings
+  String _formatDateTime(DateTime dateTime) {
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+
+    return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
+  }
+
+  // Helper method to build section titles
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue[800],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build detail items
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build map-based details (for components with quantities and prices)
+  Widget _buildMapDetailItem(
+      String label, dynamic selected, dynamic prices, dynamic quantities) {
+    if (selected == null) return SizedBox();
+
+    try {
+      if (selected is Map) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ),
+            ...selected.keys.map((key) {
+              String itemName = key.toString();
+              String price = (prices?[key] ?? 'N/A').toString();
+              String quantity = (quantities?[key] ?? 'N/A').toString();
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4.0, left: 16.0),
+                child: Text(
+                  "$itemName - Qty: $quantity, Price: $price",
+                  style: TextStyle(fontSize: 14),
+                ),
+              );
+            }).toList(),
+            SizedBox(height: 4),
+          ],
+        );
+      } else {
+        return _buildDetailItem(label, selected.toString());
+      }
+    } catch (e) {
+      return _buildDetailItem(label, 'Error displaying data');
+    }
+  }
 }
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -861,12 +2443,12 @@ class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key, required this.videoUrl});
 
   @override
-  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+  State createState() => _VideoPlayerScreenState();
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _controller;
-  late Future<void> _initializeVideoPlayerFuture;
+  late Future _initializeVideoPlayerFuture;
 
   @override
   void initState() {
@@ -887,14 +2469,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Project Video'),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
       ),
       body: FutureBuilder(
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
+            return Center(
+              child: AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
+              ),
             );
           } else {
             return const Center(child: CircularProgressIndicator());
@@ -902,6 +2488,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blue,
         onPressed: () {
           setState(() {
             _controller.value.isPlaying
@@ -911,1061 +2498,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         },
         child: Icon(
           _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.white,
         ),
-      ),
-    );
-  }
-}
-
-class ProjectCreationScreen extends StatefulWidget {
-  final Map<String, dynamic>? existingProject;
-
-  const ProjectCreationScreen({Key? key, this.existingProject})
-      : super(key: key);
-
-  @override
-  _ProjectCreationScreenState createState() => _ProjectCreationScreenState();
-}
-
-class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
-  int _currentStep = 0;
-  String panelQuantity = '';
-  String inverterQuantity = '';
-  List<String> selectedBreakers = []; // List to hold selected breakers
-  Map<String, String> breakerPrices = {}; // Map to hold breaker prices
-  Map<String, String> breakerQuantities = {}; // Map to hold breaker quantities
-  // Data to be collected for each step
-  String pvModule = ''; // Step 1: PV Module Name
-  String brand = ''; // Step 2: Brand selection
-  List<String> selectedCasing = []; // List to hold selected casing types
-  Map<String, String> casingPrices = {}; // Map to hold casing prices
-  Map<String, String> casingQuantities = {}; // Map to hold casing quantities
-
-  List<String> selectedEarthing = []; // List to hold selected earthing types
-  Map<String, String> earthingPrices = {}; // Map to hold earthing prices
-  Map<String, String> earthingQuantities =
-      {}; // Map to hold earthing quantities
-
-  String size = ''; // Step 3: Size selection
-  String panelPrice = ''; // Step 4: Panel price
-  String inverterType = ''; // Step 5: Inverter selection (On-grid, Hybrid)
-  String kwSize = ''; // Step 6: KW Size (e.g., 5 KW, 10 KW)
-  String inverterBrand = ''; // Step 7: Inverter Brand (e.g., SMA, ABB)
-  String inverterPrice = ''; // Step 8: Inverter Price
-  String structureType = ''; // Step 9: Structure type (Grounded, Elevated)
-  String structurePrice = ''; // Step 9: Structure price
-  String batteryType = ''; // Step 10: Battery type (Lithium, Tubular)
-  String batteryBrand = ''; // Step 11: Battery brand
-  String batteryQuantity = ''; // Step 12: Battery quantity
-  String batteryPrice = ''; // Step 13: Battery price
-  String wireSize = ''; // Step 14: Wire Size (4mm, 6mm, 2.5mm)
-  String wireLength = ''; // Step 14: Wire length (meters)
-  String wirePricePerMeter = ''; // Step 14: Wire price per meter
-  String breakerType = ''; // Step 15: Breaker type (AC or DC)
-  String acBreakerType = ''; // Step 15: AC breaker selection (2-pole or 4-pole)
-  String dcBreakerType = ''; // Step 15: DC breaker selection (2-pole)
-  String spdBreakerType = ''; // Step 15: SPD breaker type (2-pole or 4-pole)
-  String earthingType = ''; // Step 13: Earthing type
-  String earthingQuantity = ''; // Step 13: Earthing quantity
-  String earthingPrice = ''; // Step 13: Earthing price
-  String casingType = ''; // Step 14: Casing type
-  bool installBattery = false;
-  String? startDate;
-  String? endDate;
-  Map<String, dynamic> projectData = {};
-
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    DateTime selectedDate = DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        if (isStartDate) {
-          startDate =
-              picked.toLocal().toString().split(' ')[0]; // Format as yyyy-mm-dd
-        } else {
-          endDate =
-              picked.toLocal().toString().split(' ')[0]; // Format as yyyy-mm-dd
-        }
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.existingProject != null) {
-      breakerType = widget.existingProject!['breakerType'] ?? '';
-      breakerType = widget.existingProject!['breakerType'] ?? '';
-      earthingType = widget.existingProject!['earthingType'] ?? '';
-      casingType = widget.existingProject!['casingType'] ?? '';
-      // Pre-fill data if editing an existing project
-      pvModule = widget.existingProject!['pvModule'] ?? '';
-      brand = widget.existingProject!['brand'] ?? '';
-      size = widget.existingProject!['size'] ?? '';
-      panelPrice = widget.existingProject!['panelPrice'] ?? '';
-      inverterType = widget.existingProject!['inverterType'] ?? '';
-      kwSize = widget.existingProject!['kwSize'] ?? '';
-      inverterBrand = widget.existingProject!['inverterBrand'] ?? '';
-      inverterPrice = widget.existingProject!['inverterPrice'] ?? '';
-      structureType = widget.existingProject!['structureType'] ?? '';
-      structurePrice = widget.existingProject!['structurePrice'] ?? '';
-      batteryType = widget.existingProject!['batteryType'] ?? '';
-      batteryBrand = widget.existingProject!['batteryBrand'] ?? '';
-      batteryQuantity = widget.existingProject!['batteryQuantity'] ?? '';
-      batteryPrice = widget.existingProject!['batteryPrice'] ?? '';
-      wireSize = widget.existingProject!['wireSize'] ?? '';
-      wireLength = widget.existingProject!['wireLength'] ?? '';
-      wirePricePerMeter = widget.existingProject!['wirePricePerMeter'] ?? '';
-      breakerType = widget.existingProject!['breakerType'] ?? '';
-      acBreakerType = widget.existingProject!['acBreakerType'] ?? '';
-      dcBreakerType = widget.existingProject!['dcBreakerType'] ?? '';
-      spdBreakerType = widget.existingProject!['spdBreakerType'] ?? '';
-    }
-  }
-
-  List<Step> _steps() {
-    return [
-      // Step 1: PV Module Type
-      Step(
-        title: const Text('Step 1: PV Module'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose PV Module Type:'),
-            ListTile(
-              title: const Text('Mono'),
-              leading: Radio<String>(
-                value: 'Mono',
-                groupValue: pvModule,
-                onChanged: (String? value) {
-                  setState(() {
-                    pvModule = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Bi-Facial'),
-              leading: Radio<String>(
-                value: 'Bi-Facial',
-                groupValue: pvModule,
-                onChanged: (String? value) {
-                  setState(() {
-                    pvModule = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 0,
-        state: _currentStep == 0 ? StepState.editing : StepState.complete,
-      ),
-      // Step 2: Select Brand
-      Step(
-        title: const Text('Step 2: Select Brand'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose the brand of PV module:'),
-            ListTile(
-              title: const Text('Longi'),
-              leading: Radio<String>(
-                value: 'Longi',
-                groupValue: brand,
-                onChanged: (String? value) {
-                  setState(() {
-                    brand = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Jinko'),
-              leading: Radio<String>(
-                value: 'Jinko',
-                groupValue: brand,
-                onChanged: (String? value) {
-                  setState(() {
-                    brand = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 1,
-        state: _currentStep == 1 ? StepState.editing : StepState.complete,
-      ),
-      // Step 3: Select Size
-      Step(
-        title: const Text('Step 3: Select Size'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose the size of the PV module:'),
-            ListTile(
-              title: const Text('580W'),
-              leading: Radio<String>(
-                value: '580',
-                groupValue: size,
-                onChanged: (String? value) {
-                  setState(() {
-                    size = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('585W'),
-              leading: Radio<String>(
-                value: '585',
-                groupValue: size,
-                onChanged: (String? value) {
-                  setState(() {
-                    size = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('610W'),
-              leading: Radio<String>(
-                value: '610',
-                groupValue: size,
-                onChanged: (String? value) {
-                  setState(() {
-                    size = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 2,
-        state: _currentStep == 2 ? StepState.editing : StepState.complete,
-      ),
-      // Step 4: Enter Panel Price
-      Step(
-        title: const Text('Step 4: Panel Price & Quantity'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Enter the price of $brand $size:'),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) => setState(() => panelPrice = value),
-              decoration: const InputDecoration(
-                labelText: 'Price per panel',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) => setState(() => panelQuantity = value),
-              decoration: const InputDecoration(
-                labelText: 'Number of panels',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 3,
-        state: _currentStep == 3 ? StepState.editing : StepState.complete,
-      ),
-      // Step 5: Inverter Type
-      Step(
-        title: const Text('Step 5: Inverter Type'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose the Inverter Type:'),
-            ListTile(
-              title: const Text('On-grid'),
-              leading: Radio<String>(
-                value: 'On-grid',
-                groupValue: inverterType,
-                onChanged: (String? value) {
-                  setState(() {
-                    inverterType = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Hybrid'),
-              leading: Radio<String>(
-                value: 'Hybrid',
-                groupValue: inverterType,
-                onChanged: (String? value) {
-                  setState(() {
-                    inverterType = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 4,
-        state: _currentStep == 4 ? StepState.editing : StepState.complete,
-      ),
-      // Step 6: Enter KW Size
-      Step(
-        title: const Text('Step 6: Enter KW Size'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Enter KW size:'),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                setState(() {
-                  kwSize = value;
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'KW',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 5,
-        state: _currentStep == 5 ? StepState.editing : StepState.complete,
-      ),
-      // Step 7: Select Inverter Brand
-      Step(
-        title: const Text('Step 7: Select Inverter Brand'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Enter or Choose Inverter Brand:'),
-            TextField(
-              onChanged: (value) {
-                setState(() {
-                  inverterBrand = value;
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'Inverter Brand',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 6,
-        state: _currentStep == 6 ? StepState.editing : StepState.complete,
-      ),
-      // Step 8: Inverter Price
-      Step(
-        title: const Text('Step 8: Inverter Price & Quantity'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Enter the price for $inverterBrand $inverterType inverter:'),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) => setState(() => inverterPrice = value),
-              decoration: const InputDecoration(
-                labelText: 'Price per inverter',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) => setState(() => inverterQuantity = value),
-              decoration: const InputDecoration(
-                labelText: 'Number of inverters',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 7,
-        state: _currentStep == 7 ? StepState.editing : StepState.complete,
-      ),
-      // Step 9: Select Structure Type
-      Step(
-        title: const Text('Step 9: Structure Type'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose Structure Type (Grounded/Elevated):'),
-            ListTile(
-              title: const Text('Grounded'),
-              leading: Radio<String>(
-                value: 'Grounded',
-                groupValue: structureType,
-                onChanged: (String? value) {
-                  setState(() {
-                    structureType = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Elevated'),
-              leading: Radio<String>(
-                value: 'Elevated',
-                groupValue: structureType,
-                onChanged: (String? value) {
-                  setState(() {
-                    structureType = value!;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 8,
-        state: _currentStep == 8 ? StepState.editing : StepState.complete,
-      ),
-      // Step 10: Wire Selection
-      Step(
-        title: const Text('Step 10: Wire Selection'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Select wire size:'),
-            ListTile(
-              title: const Text('4mm'),
-              leading: Radio<String>(
-                value: '4mm',
-                groupValue: wireSize,
-                onChanged: (String? value) {
-                  setState(() {
-                    wireSize = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('6mm'),
-              leading: Radio<String>(
-                value: '6mm',
-                groupValue: wireSize,
-                onChanged: (String? value) {
-                  setState(() {
-                    wireSize = value!;
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('2.5mm'),
-              leading: Radio<String>(
-                value: '2.5mm',
-                groupValue: wireSize,
-                onChanged: (String? value) {
-                  setState(() {
-                    wireSize = value!;
-                  });
-                },
-              ),
-            ),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                setState(() {
-                  wireLength = value;
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'Wire length (meters)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            TextField(
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                setState(() {
-                  wirePricePerMeter = value;
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'Price per meter',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 9,
-        state: _currentStep == 9 ? StepState.editing : StepState.complete,
-      ),
-      // Step 11: Breaker Type Selection
-      Step(
-        title: const Text('Step 11: Breaker Selection'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose Breaker Type:'),
-            ListTile(
-              title: const Text('DC 2-Pole'),
-              leading: Checkbox(
-                value: selectedBreakers.contains('DC 2-Pole'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedBreakers.add('DC 2-Pole');
-                    } else {
-                      selectedBreakers.remove('DC 2-Pole');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('AC 4-Pole'),
-              leading: Checkbox(
-                value: selectedBreakers.contains('AC 4-Pole'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedBreakers.add('AC 4-Pole');
-                    } else {
-                      selectedBreakers.remove('AC 4-Pole');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('AC 2-Pole'),
-              leading: Checkbox(
-                value: selectedBreakers.contains('AC 2-Pole'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedBreakers.add('AC 2-Pole');
-                    } else {
-                      selectedBreakers.remove('AC 2-Pole');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('SPD 4-Pole'),
-              leading: Checkbox(
-                value: selectedBreakers.contains('SPD 4-Pole'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedBreakers.add('SPD 4-Pole');
-                    } else {
-                      selectedBreakers.remove('SPD 4-Pole');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('SPD 2-Pole'),
-              leading: Checkbox(
-                value: selectedBreakers.contains('SPD 2-Pole'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedBreakers.add('SPD 2-Pole');
-                    } else {
-                      selectedBreakers.remove('SPD 2-Pole');
-                    }
-                  });
-                },
-              ),
-            ),
-            // Display the text fields to enter prices and quantities for each selected breaker
-            ...selectedBreakers.map((breaker) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Enter quantity for $breaker:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          breakerQuantities[breaker] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$breaker Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    Text('Enter price for $breaker:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          breakerPrices[breaker] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$breaker Price',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
-        ),
-        isActive: _currentStep >= 10,
-        state: _currentStep == 10 ? StepState.editing : StepState.complete,
-      ),
-      // Step 13: Earthing
-      Step(
-        title: const Text('Step 12: Earthing Selection'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose Earthing Type:'),
-            ListTile(
-              title: const Text('AC Earthing'),
-              leading: Checkbox(
-                value: selectedEarthing.contains('AC Earthing'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedEarthing.add('AC Earthing');
-                    } else {
-                      selectedEarthing.remove('AC Earthing');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('DC Earthing'),
-              leading: Checkbox(
-                value: selectedEarthing.contains('DC Earthing'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedEarthing.add('DC Earthing');
-                    } else {
-                      selectedEarthing.remove('DC Earthing');
-                    }
-                  });
-                },
-              ),
-            ),
-            // Add other earthing types similarly...
-
-            // Display text fields to enter prices and quantities for each selected earthing
-            ...selectedEarthing.map((earthing) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Enter quantity for $earthing:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          earthingQuantities[earthing] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$earthing Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    Text('Enter price for $earthing:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          earthingPrices[earthing] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$earthing Price',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
-        ),
-        isActive: _currentStep >= 11,
-        state: _currentStep == 11 ? StepState.editing : StepState.complete,
-      ),
-// Step 14: Casing
-      Step(
-        title: const Text('Step 13: Casing Selection'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose Casing Type:'),
-            ListTile(
-              title: const Text('DC and AC Power Fuse Glands'),
-              leading: Checkbox(
-                value: selectedCasing.contains('DC and AC Power Fuse Glands'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedCasing.add('DC and AC Power Fuse Glands');
-                    } else {
-                      selectedCasing.remove('DC and AC Power Fuse Glands');
-                    }
-                  });
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('PVC Pipes and Connectors'),
-              leading: Checkbox(
-                value: selectedCasing.contains('PVC Pipes and Connectors'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedCasing.add('PVC Pipes and Connectors');
-                    } else {
-                      selectedCasing.remove('PVC Pipes and Connectors');
-                    }
-                  });
-                },
-              ),
-            ),
-            // Add other casing types similarly...
-
-            // Display text fields to enter prices and quantities for each selected casing
-            ...selectedCasing.map((casing) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Enter quantity for $casing:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          casingQuantities[casing] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$casing Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    Text('Enter price for $casing:'),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          casingPrices[casing] = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: '$casing Price',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
-        ),
-        isActive: _currentStep >= 12,
-        state: _currentStep == 12 ? StepState.editing : StepState.complete,
-      ),
-      Step(
-        title: const Text('Step 14: Battery Installation'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Do you want to install a battery?'),
-            RadioListTile<bool>(
-              title: const Text('Yes'),
-              value: true,
-              groupValue: installBattery,
-              onChanged: (bool? value) {
-                setState(() => installBattery = value ?? false);
-              },
-            ),
-            RadioListTile<bool>(
-              title: const Text('No'),
-              value: false,
-              groupValue: installBattery,
-              onChanged: (bool? value) {
-                setState(() => installBattery = value ?? false);
-              },
-            ),
-            if (installBattery) ...[
-              const SizedBox(height: 10),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Battery Type',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => batteryType = value,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Battery Brand',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => batteryBrand = value,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Battery Quantity',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => batteryQuantity = value,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Battery Price',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => batteryPrice = value,
-              ),
-            ],
-          ],
-        ),
-        isActive: _currentStep >= 13,
-        state: _currentStep == 13 ? StepState.editing : StepState.complete,
-      ),
-      Step(
-        title: const Text('Step 15: Set Project Dates'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Start Date:'),
-            GestureDetector(
-              onTap: () => _selectDate(context, true),
-              child: AbsorbPointer(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: startDate ?? 'Select Start Date',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text('End Date:'),
-            GestureDetector(
-              onTap: () => _selectDate(context, false),
-              child: AbsorbPointer(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: endDate ?? 'Select End Date',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 14,
-        state: _currentStep == 14 ? StepState.editing : StepState.complete,
-      ),
-
-      Step(
-        title: const Text('Step 16: Confirmation'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Please confirm the information:'),
-            Text('PV Module: $pvModule'),
-            Text('Brand: $brand'),
-            Text('Size: $size'),
-            Text('Panel Price: $panelPrice'),
-            Text('Inverter Type: $inverterType'),
-            Text('KW Size: $kwSize'),
-            Text('Inverter Brand: $inverterBrand'),
-            Text('Inverter Price: $inverterPrice'),
-            Text('Structure Type: $structureType'),
-            Text('Structure Price: $structurePrice'),
-            Text('Battery Type: $batteryType'),
-            Text('Battery Brand: $batteryBrand'),
-            Text('Battery Quantity: $batteryQuantity'),
-            Text('Battery Price: $batteryPrice'),
-            Text('Wire Size: $wireSize'),
-            Text('Wire Length: $wireLength'),
-            Text('Wire Price per Meter: $wirePricePerMeter'),
-            Text('Breaker Type: $breakerType'),
-            ElevatedButton(
-              onPressed: _submitProject,
-              child: const Text('Submit Project'),
-            ),
-          ],
-        ),
-        isActive: _currentStep >= 15,
-        state: _currentStep == 15 ? StepState.editing : StepState.complete,
-      ),
-    ];
-  }
-
-  void _onStepContinue() {
-    if (_currentStep < _steps().length - 1) {
-      setState(() {
-        _currentStep += 1;
-      });
-    } else {
-      _submitProject();
-    }
-  }
-
-  void _onStepCancel() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep -= 1;
-      });
-    }
-  }
-
-// Update _submitProject() validation:
-  void _submitProject() async {
-    // Create list of mandatory fields
-    List<bool> mandatoryFields = [
-      pvModule.isEmpty,
-      brand.isEmpty,
-      size.isEmpty,
-      panelPrice.isEmpty,
-      inverterType.isEmpty,
-      kwSize.isEmpty,
-      inverterBrand.isEmpty,
-      inverterPrice.isEmpty,
-      structureType.isEmpty,
-      wireSize.isEmpty,
-      wireLength.isEmpty,
-      wirePricePerMeter.isEmpty,
-      selectedBreakers.isEmpty,
-      breakerPrices.isEmpty,
-    ];
-
-    // Add battery validation only if installing battery
-    if (installBattery) {
-      mandatoryFields.addAll([
-        batteryType.isEmpty,
-        batteryBrand.isEmpty,
-        batteryQuantity.isEmpty,
-        batteryPrice.isEmpty,
-      ]);
-    }
-
-    if (mandatoryFields.any((element) => element == true)) {
-      Get.snackbar('Error', 'Please complete all required steps.');
-      return;
-    }
-    try {
-      projectData['selectedBreakers'] = selectedBreakers;
-      projectData['breakerPrices'] = breakerPrices;
-      projectData['breakerQuantities'] = breakerQuantities;
-
-      projectData['pvModule'] = pvModule;
-      projectData['brand'] = brand;
-      projectData['size'] = size;
-      projectData['panelPrice'] = panelPrice;
-      projectData['inverterType'] = inverterType;
-      projectData['kwSize'] = kwSize;
-      projectData['inverterBrand'] = inverterBrand;
-      projectData['inverterPrice'] = inverterPrice;
-      projectData['structureType'] = structureType;
-      projectData['structurePrice'] = structurePrice;
-      projectData['batteryType'] = batteryType;
-      projectData['batteryBrand'] = batteryBrand;
-      projectData['batteryQuantity'] = batteryQuantity;
-      projectData['batteryPrice'] = batteryPrice;
-      projectData['wireSize'] = wireSize;
-      projectData['wireLength'] = wireLength;
-      projectData['wirePricePerMeter'] = wirePricePerMeter;
-      projectData['breakerType'] = breakerType;
-      projectData['acBreakerType'] = acBreakerType;
-      projectData['dcBreakerType'] = dcBreakerType;
-      projectData['spdBreakerType'] = spdBreakerType;
-      projectData['earthingType'] = earthingType;
-      projectData['earthingQuantity'] = earthingQuantity;
-      projectData['earthingPrice'] = earthingPrice;
-      projectData['casingType'] = casingType;
-      projectData['startDate'] = startDate;
-      projectData['endDate'] = endDate;
-      if (widget.existingProject != null) {
-        // Update the existing project
-        await FirebaseFirestore.instance
-            .collection('Projects')
-            .doc(widget.existingProject!['id'])
-            .update({
-          ...projectData,
-          'status': 'progress', // Update status to 'progress'
-        });
-      } else {
-        // Create a new project
-        await FirebaseFirestore.instance.collection('Projects').add({
-          ...projectData,
-          'status': 'progress', // Set status to 'progress'
-        });
-      }
-
-// Example from ProjectCreationScreen's _submitProject method:
-      Get.to(() => StaffAssignmentScreen(
-            projectId: widget.existingProject?['id'] ??
-                '', // Use existing project ID or empty string
-            startDate: DateTime.parse(
-                startDate!), // Convert your startDate string to DateTime
-            endDate: DateTime.parse(
-                endDate!), // Convert your endDate string to DateTime
-          ));
-
-      Get.snackbar('Success', 'Project has been created/updated.');
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to submit project: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Project'),
-      ),
-      body: Stepper(
-        steps: _steps(),
-        currentStep: _currentStep,
-        onStepContinue: _onStepContinue,
-        onStepCancel: _onStepCancel,
-        controlsBuilder: (BuildContext context, ControlsDetails details) {
-          return Row(
-            children: [
-              if (_currentStep != 0)
-                TextButton(
-                  onPressed: details.onStepCancel,
-                  child: const Text('Back'),
-                ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: details.onStepContinue,
-                child: Text(
-                    _currentStep == _steps().length - 1 ? 'Submit' : 'Next'),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -2080,7 +2614,7 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
       // Update project with selected staff and dates
       await _firestore.collection('Projects').doc(widget.projectId).update({
         'assignedStaff': FieldValue.arrayUnion(selectedStaff),
-        'status': 'assigned',
+        'status': 'doing',
         'startDate': Timestamp.fromDate(widget.startDate),
         'endDate': Timestamp.fromDate(widget.endDate),
       });
