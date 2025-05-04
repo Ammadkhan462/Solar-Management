@@ -12,10 +12,8 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize AppController
   final AppController appController = Get.put(AppController());
 
-  // Ensure _loadUserState() is completed before running the app
   await appController._loadUserState();
 
   runApp(
@@ -45,14 +43,12 @@ class AppController extends GetxController {
         .listen(_authStateChanged); // Listen for auth changes
   }
 
-  // Load the persisted user state and route from SharedPreferences
   Future<void> _loadUserState() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userUid = prefs.getString('userUid');
     String? lastRoute = prefs.getString('lastRoute');
 
     if (userUid != null) {
-      // Check if the user is an Admin, Manager, or Employee
       final adminDoc = await _firestore.collection("Admin").doc(userUid).get();
       final managerDoc =
           await _firestore.collection("Managers").doc(userUid).get();

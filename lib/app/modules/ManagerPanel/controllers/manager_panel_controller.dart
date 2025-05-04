@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:math';
+import 'package:admin/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,15 +10,39 @@ class ManagerPanelController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   var projects = <Map<String, dynamic>>[].obs;
+  StreamSubscription? _projectsSubscription;
 
   var manager = ManagerModel(uid: '', name: '', email: '', cnic: '').obs;
   var isLoading = false.obs;
+  final RxString currentFilter = "All".obs;
+  final RxList<Map<String, dynamic>> filteredProjects =
+      <Map<String, dynamic>>[].obs;
+  @override
+  void onClose() {
+    _projectsSubscription?.cancel();
+    super.onClose();
+  }
+
+  void filterProjects(String filter) {
+    currentFilter.value = filter;
+
+    if (filter == "All") {
+      filteredProjects.value = List.from(projects);
+    } else if (filter == "Pending") {
+      filteredProjects.value =
+          projects.where((p) => p['status'] != 'completed').toList();
+    } else if (filter == "Completed") {
+      filteredProjects.value =
+          projects.where((p) => p['status'] == 'completed').toList();
+    }
+  }
 
   @override
   void onInit() {
     super.onInit();
     fetchManagerData();
     fetchAllEmployees();
+
     ever(manager, (_) {
       // Only fetch projects after the manager data is available
       if (manager.value.uid.isNotEmpty) {
@@ -42,36 +68,28 @@ class ManagerPanelController extends GetxController {
           ])
           .snapshots()
           .listen((querySnapshot) {
-            // Here, projects is a list of maps
-            // In fetchPendingProjects() method
             projects.value = querySnapshot.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
               data['id'] = doc.id;
 
-              // Calculate progress for 'doing' and 'completed' projects
+              // Correct progress calculation based on video URLs
               if (data['taskVideos'] != null) {
-                // Check if taskVideos is a Map or List and handle accordingly
-                int completedVideos = 0;
-                if (data['taskVideos'] is Map) {
-                  // If it's a Map, count the entries
-                  completedVideos = (data['taskVideos'] as Map).length;
-                } else if (data['taskVideos'] is List) {
-                  // If it's a List, count the items
-                  completedVideos = (data['taskVideos'] as List).length;
-                }
+                final taskVideos = data['taskVideos'] as Map<String, dynamic>;
+                final totalTasks =
+                    5; // Fixed number of tasks (Structure, Panel Installation, Inverter installation, Wiring, Completion)
 
-                // Get total tasks count
-                int totalTasks = 1; // Default to 1 to avoid division by zero
-                if (data['tasks'] is List) {
-                  totalTasks = (data['tasks'] as List).length;
-                } else if (data['tasks'] is Map) {
-                  totalTasks = (data['tasks'] as Map).length;
-                }
+                // Count the number of tasks that have videos (indicating completion)
+                final completedTasks = taskVideos.values
+                    .where(
+                        (video) => video != null && video.toString().isNotEmpty)
+                    .length;
 
+                // Calculate the progress: Each task is worth 20% (5 tasks total)
                 data['progress'] =
-                    ((completedVideos / totalTasks) * 100).round();
+                    ((completedTasks / totalTasks) * 100).round();
               } else {
-                data['progress'] = 0;
+                data['progress'] =
+                    0; // If no task videos are present, progress is 0
               }
 
               return data;
@@ -94,6 +112,7 @@ class ManagerPanelController extends GetxController {
       });
 
       Get.snackbar("Success", "Engineer has been assigned to the project");
+      Get.offAllNamed(Routes.MANAGER_PANEL); // Adjust with your route name
     } catch (e) {
       Get.snackbar("Error", "Failed to assign engineer: $e");
     }
@@ -134,7 +153,10 @@ class ManagerPanelController extends GetxController {
                   title: Text(engineerName),
                   subtitle: Text("Status: $engineerStatus"),
                   onTap: () {
-                    selectedEngineer = engineerUid; // Select the engineer
+                    selectedEngineer = engineerUid;
+                    Get.offAllNamed(
+                        Routes.MANAGER_PANEL); // Adjust with your route name
+// Select the engineer
                     Navigator.of(context).pop(); // Close the dialog
                     assignEngineerToProject(projectId,
                         selectedEngineer!); // Assign engineer to project

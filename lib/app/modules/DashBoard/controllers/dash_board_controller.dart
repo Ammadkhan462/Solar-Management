@@ -1,20 +1,46 @@
 import 'dart:math';
 import 'package:admin/app/modules/ManagerDashboard/controllers/manager_dashboard_controller.dart';
 import 'package:admin/app/modules/ManagerDashboard/views/manager_dashboard_view.dart';
-import 'package:admin/app/modules/ManagerPanel/controllers/manager_panel_controller.dart';
-import 'package:admin/app/modules/SignupPage/controllers/signup_page_controller.dart';
 import 'package:admin/app/routes/app_pages.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class AdminModel {
+  String uid;
+  String name;
+  String email;
+
+  AdminModel({
+    required this.uid,
+    required this.name,
+    required this.email,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'uid': uid,
+      'name': name,
+      'email': email,
+    };
+  }
+
+  factory AdminModel.fromJson(Map<String, dynamic> json) {
+    return AdminModel(
+      uid: json['uid'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+    );
+  }
+}
+
 class DashBoardController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? storedAdminUID;
 
-  // ✅ List to Store Registered Managers
+  // List to Store Registered Managers
   var managersList = <ManagerModel>[].obs;
 
   var admin = AdminModel(uid: '', name: '', email: '').obs;
@@ -57,6 +83,7 @@ class DashBoardController extends GetxController {
 
       if (currentUser != null) {
         String adminUID = currentUser.uid;
+        storedAdminUID = adminUID;
 
         // Fetch admin data from Firebase using the UID
         DocumentSnapshot doc =
@@ -76,7 +103,8 @@ class DashBoardController extends GetxController {
   }
 
   void navigateToManagerDashboard() {
-    Get.toNamed('/manager-dashboard'); // ✅ Navigate to the manager list screen
+    Get.put(ManagerDashboardController()); // Ensure controller is initialized
+    Get.to(() => const ManagerDashboardView());
   }
 
   Future<void> registerManager(String name, String cnic) async {
@@ -107,14 +135,21 @@ class DashBoardController extends GetxController {
 
       String managerUID = userCredential.user!.uid;
 
-      // ✅ Store manager details
+      // Use current user's UID if storedAdminUID is null
+      String adminUid = storedAdminUID ?? _auth.currentUser?.uid ?? '';
+
+      if (adminUid.isEmpty) {
+        throw Exception("Admin UID is missing!");
+      }
+
+      // Store manager details
       ManagerModel newManager = ManagerModel(
         uid: managerUID,
         name: name,
         email: managerEmail,
         password: managerPassword,
         cnic: cnic,
-        adminUid: storedAdminUID!, // Changed 'createdBy' to 'adminUid'
+        adminUid: adminUid,
       );
 
       await _firestore
@@ -124,8 +159,9 @@ class DashBoardController extends GetxController {
 
       isLoading.value = false;
 
-      // ✅ Redirect to Manager Credentials View
-      Get.to(() => ManagerDashboardView());
+      // Redirect to Manager Credentials View
+      Get.put(ManagerDashboardController()); // Initialize controller
+      Get.to(() => const ManagerDashboardView());
     } catch (e) {
       isLoading.value = false;
       Get.snackbar("Error", e.toString());
@@ -140,7 +176,7 @@ class DashBoardController extends GetxController {
         length, (_) => chars.codeUnitAt(random.nextInt(chars.length))));
   }
 
-  // ✅ Fetch All Registered Managers
+  // Fetch All Registered Managers
   void fetchManagers() async {
     try {
       QuerySnapshot querySnapshot =
@@ -155,7 +191,7 @@ class DashBoardController extends GetxController {
     }
   }
 
-  // ✅ Remove Manager
+  // Remove Manager
   Future<void> removeManager(String uid) async {
     try {
       await _firestore.collection("Managers").doc(uid).delete();
