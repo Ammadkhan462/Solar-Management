@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:admin/app/routes/app_pages.dart';
 
 class LoginChoiceView extends StatelessWidget {
-  const LoginChoiceView({Key? key}) : super(key: key);
+  const LoginChoiceView({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -8,11 +8,11 @@ class SearchBox extends StatelessWidget {
   final VoidCallback onSearch;
 
   const SearchBox({
-    Key? key,
+    super.key,
     required this.controller,
     required this.hintText,
     required this.onSearch,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

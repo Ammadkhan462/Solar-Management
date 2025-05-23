@@ -69,7 +69,7 @@ class ManagerPanelController extends GetxController {
           .snapshots()
           .listen((querySnapshot) {
             projects.value = querySnapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
+              final data = doc.data();
               data['id'] = doc.id;
 
               // Correct progress calculation based on video URLs
@@ -162,7 +162,7 @@ class ManagerPanelController extends GetxController {
                         selectedEngineer!); // Assign engineer to project
                   },
                 );
-              }).toList(),
+              }),
             ],
           ),
           actions: [
@@ -289,9 +289,9 @@ class ManagerPanelController extends GetxController {
     }
   }
 
-  Future<void> registerEmployee(
-      String name, String cnic, String designation) async {
-    if (name.isEmpty || cnic.isEmpty || designation == null) {
+  Future<void> registerEmployee(String name, String cnic, String designation,
+      int salary, int lateFine) async {
+    if (name.isEmpty || cnic.isEmpty) {
       Get.snackbar("Error", "Name, CNIC, and designation are required",
           backgroundColor: Colors.red);
 
@@ -323,6 +323,8 @@ class ManagerPanelController extends GetxController {
         "password": employeePassword,
         "designation": designation,
         "cnic": cnic,
+        "salary": salary, // Add salary field
+        "late fine": lateFine, // Add late fine field
         "managerId": manager.value.uid, // Associate with the manager
         "createdAt": FieldValue.serverTimestamp(),
       };

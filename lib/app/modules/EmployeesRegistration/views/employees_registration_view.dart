@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:admin/app/routes/app_pages.dart';
-import 'package:admin/Common%20widgets/common_text.dart';
 
 class EmployeesRegistrationView extends StatelessWidget {
   const EmployeesRegistrationView({super.key});

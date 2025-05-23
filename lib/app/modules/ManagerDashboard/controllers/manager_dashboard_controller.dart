@@ -1,16 +1,3 @@
-import 'dart:math';
-
-import 'package:admin/app/modules/ManagerDashboard/controllers/manager_dashboard_controller.dart';
-import 'package:admin/app/modules/ManagerPanel/controllers/manager_panel_controller.dart'
-    as panel;
-import 'package:admin/app/routes/app_pages.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';

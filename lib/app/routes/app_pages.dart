@@ -10,7 +10,6 @@ import '../modules/EmployeesRegistration/bindings/employees_registration_binding
 import '../modules/EmployeesRegistration/views/employees_registration_view.dart';
 import '../modules/ForgotPassword/bindings/forgot_password_binding.dart';
 import '../modules/ForgotPassword/views/forgot_password_view.dart';
-import '../modules/LoginPage/bindings/login_page_binding.dart';
 import '../modules/LoginPage/views/login_page_view.dart';
 import '../modules/Login_choice/bindings/login_choice_binding.dart';
 import '../modules/Login_choice/views/login_choice_view.dart';

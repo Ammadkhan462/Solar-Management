@@ -2,10 +2,15 @@ import 'dart:async';
 import 'package:admin/Common%20widgets/common_button.dart';
 import 'package:admin/Common%20widgets/common_text.dart';
 import 'package:admin/Common%20widgets/common_utils.dart';
+import 'package:admin/app/modules/EmployeeDashboard/views/attedance.dart';
+import 'package:admin/app/modules/EmployeeDashboard/views/project_manager.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:admin/Common%20widgets/notification_services.dart';
 import 'package:admin/app/modules/EmployeeDashboard/views/projectdetails.dart'
     show ProjectDetailsScreen;
 import 'package:admin/app/modules/EmployeeDashboard/views/sitesupervisor.dart';
 import 'package:admin/app/theme/typography.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:admin/app/routes/app_pages.dart';
@@ -64,10 +69,51 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: AppTheme.lightGray),
             onPressed: () {
-              FirebaseAuth.instance.signOut();
-              Get.offAllNamed(Routes.LOGIN_CHOICE);
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: Row(
+                    children: const [
+                      Icon(Icons.logout, color: AppTheme.buildingBlue),
+                      SizedBox(width: 8),
+                      Text("Sign Out"),
+                    ],
+                  ),
+                  content: const Text(
+                    "Are you sure you want to sign out?",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(color: AppTheme.buildingBlue),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.buildingBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.of(context).pop();
+                        await FirebaseAuth.instance.signOut();
+                        Get.offAllNamed(Routes.LOGIN_CHOICE);
+                      },
+                      child: const Text("Confirm"),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
@@ -115,7 +161,11 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
                     if (_controller.isSiteSupervisor)
                       _buildSiteSupervisorContent(),
                     if (_controller.isProjectManager)
-                      _buildProjectManagerContent(),
+                      ProjectManagerContent(
+                        controller: _controller,
+                        autoLoadedProjects:
+                            _controller.autoLoadedProjects ?? false,
+                      ),
                     if (_controller.isElectrician || _controller.isTechnician)
                       _buildTechnicianContent(),
                   ],
@@ -349,7 +399,6 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
     );
   }
 
-  // Beautiful welcome card with gradient and shadow
   Widget _buildWelcomeCard() {
     return Container(
       width: double.infinity,
@@ -373,145 +422,260 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white,
-            child: Text(
-              _controller.employee.value.name.isNotEmpty
-                  ? _controller.employee.value.name[0].toUpperCase()
-                  : "?",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.buildingBlue,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Welcome, ${_controller.employee.value.name}",
-                  style: const TextStyle(
-                    fontSize: 22,
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.white,
+                child: Text(
+                  _controller.employee.value.name.isNotEmpty
+                      ? _controller.employee.value.name[0].toUpperCase()
+                      : "?",
+                  style: TextStyle(
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.buildingBlue,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  "Role: ${_controller.employee.value.designation}",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome, ${_controller.employee.value.name}",
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Role: ${_controller.employee.value.designation}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      DateFormat('EEEE, MMM dd, yyyy').format(DateTime.now()),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            children: [
+              GestureDetector(
+                onTap: () => _navigateToAttendanceSystem(),
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.fingerprint,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            "Mark Attendance",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => _navigateToAttendanceHistory(),
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.history,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            "Attendance History",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-// Build Sales Employee specific dashboard content
+  // Add this method to navigate to the attendance system
+  void _navigateToAttendanceSystem() {
+    Get.to(() => const AttendanceSystemScreen());
+  }
+
+  // Add this method to navigate to the attendance history
+  void _navigateToAttendanceHistory() {
+    // By default, we'll show the current month's attendance
+    final now = DateTime.now();
+    final currentMonth = DateFormat('yyyy-MM').format(now);
+
+    Get.to(() => AttendanceHistoryScreen(initialMonth: currentMonth));
+  }
+
+  // Build Sales Employee specific dashboard content
   Widget _buildSalesEmployeeContent() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _buildSectionHeader(
-        "Your Projects",
-        icon: Icons.business_center,
-        actionButton: ElevatedButton.icon(
-          onPressed: () => Get.to(() => SalesEmployeeForm()),
-          icon: const Icon(Icons.add),
-          label: const Text('New Project'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          "Your Projects",
+          icon: Icons.business_center,
+          actionButton: ElevatedButton.icon(
+            onPressed: () => Get.to(() => SalesEmployeeForm()),
+            icon: const Icon(Icons.add),
+            label: const Text('New Project'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 2,
             ),
-            elevation: 2,
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+        // Debug info - remove in production
+        Obx(() {
+          final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+          final filteredProjects = _controller.createdProjects
+              .where((project) => project['salesEmployeeId'] == currentUserId)
+              .toList();
 
-      const SizedBox(height: 16),
+          return CommonText(
+            text: "Your projects: ${filteredProjects.length}",
+            style: AppTypography.small.copyWith(color: Colors.grey),
+          );
+        }),
+        const SizedBox(height: 8),
+        // Project list with refresh indicator and proper scrolling
+        SizedBox(
+          height: 350, // Set a fixed height for the list to allow scrolling
+          child: RefreshIndicator(
+            onRefresh: () async {
+              // Force refresh the data
+              _controller.setupSalesProjectsListener();
+            },
+            child: Obx(
+              () {
+                final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                final filteredProjects = _controller.createdProjects
+                    .where((project) =>
+                        project['salesEmployeeId'] == currentUserId)
+                    .toList();
 
-      // Debug info - remove in production
-      Obx(() {
-        final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-        final filteredProjects = _controller.createdProjects
-            .where((project) => project['salesEmployeeId'] == currentUserId)
-            .toList();
-
-        return CommonText(
-          text: "Your projects: ${filteredProjects.length}",
-          style: AppTypography.small.copyWith(color: Colors.grey),
-        );
-      }),
-
-      const SizedBox(height: 8),
-
-      // Project list with refresh indicator
-      RefreshIndicator(
-        onRefresh: () async {
-          // Force refresh the data
-          _controller.setupSalesProjectsListener();
-        },
-        child: Obx(
-          () {
-            // Filter the projects to show only those created by the current sales employee
-            final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-            final filteredProjects = _controller.createdProjects
-                .where((project) => project['salesEmployeeId'] == currentUserId)
-                .toList();
-
-            if (filteredProjects.isEmpty) {
-              return Container(
-                height: 200, // Minimum height for RefreshIndicator to work
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.folder_open,
-                              size: 60, color: Colors.grey.shade400),
-                          const SizedBox(height: 16),
-                          CommonText(
-                            text: "No projects created yet",
-                            style: AppTypography.medium.copyWith(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
+                if (filteredProjects.isEmpty) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: 200,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.folder_open,
+                                  size: 60, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              CommonText(
+                                text: "No projects created yet",
+                                style: AppTypography.medium.copyWith(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
+                    ],
+                  );
+                }
 
-            return ListView.builder(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: filteredProjects.length,
-                itemBuilder: (context, index) {
-                  final project = filteredProjects[index];
-                  final status = project['status'] ?? 'pending';
-
-                  return _buildProjectCard(project, status);
-                });
-          },
+                return ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: filteredProjects.length,
+                  itemBuilder: (context, index) {
+                    final project = filteredProjects[index];
+                    final status = project['status'] ?? 'pending';
+                    return _buildProjectCard(project, status);
+                  },
+                );
+              },
+            ),
+          ),
         ),
-      )
-    ]);
+      ],
+    );
   }
 
   // Beautiful project card with improved styling
@@ -584,7 +748,7 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: _getStatusColor(status).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(16),
@@ -777,7 +941,7 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
   }
 
   Widget _buildProjectManagerContent() {
-    void _autoLoadProjectsData() {
+    void autoLoadProjectsData() {
       // Only auto-load once per session
       if (_controller.autoLoadedProjects) return;
 
@@ -798,7 +962,7 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoLoadProjectsData();
+      autoLoadProjectsData();
     });
 
     return LayoutBuilder(builder: (context, constraints) {
@@ -1047,195 +1211,194 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
         project['technicianDesignation'] ?? 'Technician';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            if (project.containsKey('id')) {
-              Get.to(() => ProjectDetailsScreen(projectId: project['id']));
-            }
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Project header with title and status - unchanged
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(status).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              if (project.containsKey('id')) {
+                Get.to(() => ProjectDetailsScreen(projectId: project['id']));
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Project header with title and status - unchanged
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(status).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          _getStatusIcon(status),
+                          color: _getStatusColor(status),
+                          size: 24,
+                        ),
                       ),
-                      child: Icon(
-                        _getStatusIcon(status),
-                        color: _getStatusColor(status),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            project['projectName'] ?? 'No Name',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              project['projectName'] ?? 'No Name',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Client: ${project['clientName'] ?? 'Not specified'}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(status).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          _getStatusText(status),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _getStatusColor(status),
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Client: ${project['clientName'] ?? 'Not specified'}",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                            ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Progress bar - unchanged
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Progress: $progress%",
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: progress / 100,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _getProgressColor(progress),
+                      ),
+                      minHeight: 8,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+
+                  // Team Assignment Information - Enhanced with actual designations
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Team Assignment",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.buildingBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Display assignments for each role with actual designations
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildRoleBadge(
+                            salesDesignation,
+                            salesEmployeeName,
+                            hasSalesEmployee,
+                            Icons.person,
+                          ),
+                          _buildRoleBadge(
+                            engineerDesignation,
+                            engineerName,
+                            hasEngineer,
+                            Icons.engineering,
+                          ),
+                          _buildRoleBadge(
+                            supervisorDesignation,
+                            siteSupervisorName,
+                            hasSiteSupervisor,
+                            Icons.supervisor_account,
+                          ),
+                          _buildRoleBadge(
+                            technicianDesignation,
+                            technicianName,
+                            hasTechnician,
+                            Icons.build,
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(status).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        _getStatusText(status),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _getStatusColor(status),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Progress bar - unchanged
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Progress: $progress%",
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress / 100,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _getProgressColor(progress),
-                    ),
-                    minHeight: 8,
+                    ],
                   ),
-                ),
 
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                // Team Assignment Information - Enhanced with actual designations
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  // Additional project details
+                  if (project['address'] != null) ...[
+                    _buildInfoRow(
+                      "Location",
+                      project['address'],
+                      Icons.location_on,
+                    ),
+                  ],
+                  if (project['lastUpdated'] != null) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      "Team Assignment",
+                      "Last updated: ${_formatDate(project['lastUpdated'])}",
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.buildingBlue,
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Display assignments for each role with actual designations
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildRoleBadge(
-                          salesDesignation,
-                          salesEmployeeName,
-                          hasSalesEmployee,
-                          Icons.person,
-                        ),
-                        _buildRoleBadge(
-                          engineerDesignation,
-                          engineerName,
-                          hasEngineer,
-                          Icons.engineering,
-                        ),
-                        _buildRoleBadge(
-                          supervisorDesignation,
-                          siteSupervisorName,
-                          hasSiteSupervisor,
-                          Icons.supervisor_account,
-                        ),
-                        _buildRoleBadge(
-                          technicianDesignation,
-                          technicianName,
-                          hasTechnician,
-                          Icons.build,
-                        ),
-                      ],
-                    ),
                   ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Additional project details
-                if (project['address'] != null) ...[
-                  _buildInfoRow(
-                    "Location",
-                    project['address'],
-                    Icons.location_on,
-                  ),
                 ],
-                if (project['lastUpdated'] != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    "Last updated: ${_formatDate(project['lastUpdated'])}",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   // Enhanced role badge that displays the actual designation
@@ -1765,8 +1928,7 @@ class EmployeeDashboardView extends GetView<EmployeeDashboardController> {
 class VideoControlButtons extends StatefulWidget {
   final String videoUrl;
 
-  const VideoControlButtons({required this.videoUrl, Key? key})
-      : super(key: key);
+  const VideoControlButtons({required this.videoUrl, super.key});
 
   @override
   _VideoControlButtonsState createState() => _VideoControlButtonsState();
@@ -1801,6 +1963,9 @@ class _VideoControlButtonsState extends State<VideoControlButtons> {
 }
 
 class SalesEmployeeFormController extends GetxController {
+  final isLoading = true.obs; // Add this
+  final isSubmitting = false.obs;
+  final errorMessage = ''.obs; // Add this for error handling
   // Your existing properties
   final fullName = ''.obs;
   final email = ''.obs;
@@ -1813,7 +1978,6 @@ class SalesEmployeeFormController extends GetxController {
   final engineerAssigned = ''.obs;
   final preferredDay = ''.obs;
   final preferredTime = ''.obs;
-  final isSubmitting = false.obs;
   final availableEngineers = <Map<String, dynamic>>[].obs;
   var locationPinUrl = ''.obs; // Added new property for location pin URL
 
@@ -1823,7 +1987,17 @@ class SalesEmployeeFormController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchCurrentEmployeeData().then((_) => fetchAvailableEngineers());
+    fetchCurrentEmployeeData().then((_) {
+      fetchAvailableEngineers().then((_) {
+        isLoading.value = false;
+      }).catchError((e) {
+        isLoading.value = false;
+        errorMessage.value = "Failed to fetch engineers: $e";
+      });
+    }).catchError((e) {
+      isLoading.value = false;
+      errorMessage.value = "Failed to fetch employee data: $e";
+    });
   }
 
   Future<void> fetchCurrentEmployeeData() async {
@@ -1859,7 +2033,7 @@ class SalesEmployeeFormController extends GetxController {
     }
   }
 
-  void fetchAvailableEngineers() async {
+  Future<void> fetchAvailableEngineers() async {
     try {
       if (currentEmployee.value == null ||
           currentEmployee.value!.managerId == null ||
@@ -2055,9 +2229,10 @@ class SalesEmployeeForm extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: CommonText(
-          text: "New Client Consultation",
-          style: AppTypography.bold.copyWith(
+        title: Text(
+          "New Client Consultation",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
             color: AppTheme.buildingBlue,
           ),
         ),
@@ -2067,175 +2242,222 @@ class SalesEmployeeForm extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Main content
           SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20.0, 8.0, 20.0, 100.0),
-            child: Obx(() {
-              if (controller.isSubmitting.value) {
-                return SizedBox(
-                  height: screenHeight * 0.8,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.buildingBlue),
-                        const SizedBox(height: 16),
-                        CommonText(text: "Submitting your request..."),
-                      ],
+            child: GetX<SalesEmployeeFormController>(
+              builder: (controller) {
+                if (controller.isLoading.value) {
+                  return SizedBox(
+                    height: screenHeight * 0.8,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                              color: AppTheme.buildingBlue),
+                          const SizedBox(height: 16),
+                          Text("Loading form data..."),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionHeader(
-                      "Step 1: Client Information", Icons.person),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) => controller.fullName.value = value,
-                    labelText: "Client Full Name",
-                    icon: Icons.person_outline,
-                  ),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) => controller.email.value = value,
-                    labelText: "Email Address",
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) => controller.phone.value = value,
-                    labelText: "Phone Number",
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                      "Step 2: Installation Details", Icons.location_on),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) => controller.address.value = value,
-                    labelText: "Installation Address",
-                    icon: Icons.home_outlined,
-                    maxLines: 2,
-                  ),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) =>
-                        controller.locationPinUrl.value = value,
-                    labelText: "Pin URL Location (Optional)",
-                    icon: Icons.location_on,
-                    hintText: "Paste map link here",
-                    keyboardType: TextInputType.url,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdownField(
-                    labelText: "Property Type",
-                    value: controller.propertyType.value.isEmpty
-                        ? null
-                        : controller.propertyType.value,
-                    items: [
-                      'Residential',
-                      'Commercial',
-                      'Industrial',
-                      'Agricultural'
-                    ],
-                    onChanged: (newValue) =>
-                        controller.propertyType.value = newValue!,
-                    icon: Icons.business,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                      "Step 3: Solar System Details", Icons.solar_power),
-                  _buildDropdownField(
-                    labelText: "System Type",
-                    value: controller.solarType.value.isEmpty
-                        ? null
-                        : controller.solarType.value,
-                    items: ['Hybrid', 'On-grid', 'Off-grid'],
-                    onChanged: (newValue) =>
-                        controller.solarType.value = newValue!,
-                    icon: Icons.electrical_services,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: null,
-                    onChanged: (value) =>
-                        controller.solarCapacity.value = value,
-                    labelText: "Solar Capacity (kW)",
-                    icon: Icons.bolt,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdownField(
-                    labelText: "Structure Type",
-                    value: controller.structureType.value.isEmpty
-                        ? null
-                        : controller.structureType.value,
-                    items: [
-                      'Elevated',
-                      'Ground-mounted',
-                      'Roof-mounted',
-                      'Other'
-                    ],
-                    onChanged: (newValue) =>
-                        controller.structureType.value = newValue!,
-                    icon: Icons.architecture,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                      "Step 4: Engineer Assignment", Icons.engineering),
-                  Obx(() => _buildEngineerDropdown(
+                if (controller.errorMessage.value.isNotEmpty) {
+                  return SizedBox(
+                    height: screenHeight * 0.8,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, color: Colors.red, size: 50),
+                          const SizedBox(height: 16),
+                          Text(
+                            controller.errorMessage.value,
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.buildingBlue,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () => Get.back(),
+                            child: Text("Go Back"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (controller.isSubmitting.value) {
+                  return SizedBox(
+                    height: screenHeight * 0.8,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                              color: AppTheme.buildingBlue),
+                          const SizedBox(height: 16),
+                          Text("Submitting your request..."),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                        "Step 1: Client Information", Icons.person),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) => controller.fullName.value = value,
+                      labelText: "Client Full Name",
+                      icon: Icons.person_outline,
+                    ),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) => controller.email.value = value,
+                      labelText: "Email Address",
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) => controller.phone.value = value,
+                      labelText: "Phone Number",
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                        "Step 2: Installation Details", Icons.location_on),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) => controller.address.value = value,
+                      labelText: "Installation Address",
+                      icon: Icons.home_outlined,
+                      maxLines: 2,
+                    ),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) =>
+                          controller.locationPinUrl.value = value,
+                      labelText: "Pin URL Location (Optional)",
+                      icon: Icons.location_on,
+                      hintText: "Paste map link here",
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDropdownField(
+                      labelText: "Property Type",
+                      value: controller.propertyType.value.isEmpty
+                          ? null
+                          : controller.propertyType.value,
+                      items: [
+                        'Residential',
+                        'Commercial',
+                        'Industrial',
+                        'Agricultural'
+                      ],
+                      onChanged: (newValue) =>
+                          controller.propertyType.value = newValue ?? '',
+                      icon: Icons.business,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                        "Step 3: Solar System Details", Icons.solar_power),
+                    _buildDropdownField(
+                      labelText: "System Type",
+                      value: controller.solarType.value.isEmpty
+                          ? null
+                          : controller.solarType.value,
+                      items: ['Hybrid', 'On-grid', 'Off-grid'],
+                      onChanged: (newValue) =>
+                          controller.solarType.value = newValue ?? '',
+                      icon: Icons.electrical_services,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: null,
+                      onChanged: (value) =>
+                          controller.solarCapacity.value = value,
+                      labelText: "Solar Capacity (kW)",
+                      icon: Icons.bolt,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDropdownField(
+                      labelText: "Structure Type",
+                      value: controller.structureType.value.isEmpty
+                          ? null
+                          : controller.structureType.value,
+                      items: [
+                        'Elevated',
+                        'Ground-mounted',
+                        'Roof-mounted',
+                        'Other'
+                      ],
+                      onChanged: (newValue) =>
+                          controller.structureType.value = newValue ?? '',
+                      icon: Icons.architecture,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                        "Step 4: Engineer Assignment", Icons.engineering),
+                    GetX<SalesEmployeeFormController>(
+                      builder: (controller) => _buildEngineerDropdown(
                         engineers: controller.availableEngineers.value,
                         selectedValue: controller.engineerAssigned.value,
                         onChanged: (newValue) =>
-                            controller.engineerAssigned.value = newValue!,
-                      )),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                      "Step 5: Schedule Consultation", Icons.calendar_today),
-                  _buildDropdownField(
-                    labelText: "Preferred Day",
-                    value: controller.preferredDay.value.isEmpty
-                        ? null
-                        : controller.preferredDay.value,
-                    items: [
-                      'Monday',
-                      'Tuesday',
-                      'Wednesday',
-                      'Thursday',
-                      'Friday',
-                      'Saturday'
-                    ],
-                    onChanged: (newValue) =>
-                        controller.preferredDay.value = newValue!,
-                    icon: Icons.event,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdownField(
-                    labelText: "Preferred Time",
-                    value: controller.preferredTime.value.isEmpty
-                        ? null
-                        : controller.preferredTime.value,
-                    items: [
-                      'Morning (9am-12pm)',
-                      'Afternoon (12pm-5pm)',
-                      'Evening (5pm-8pm)'
-                    ],
-                    onChanged: (newValue) =>
-                        controller.preferredTime.value = newValue!,
-                    icon: Icons.access_time,
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              );
-            }),
+                            controller.engineerAssigned.value = newValue ?? '',
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                        "Step 5: Schedule Consultation", Icons.calendar_today),
+                    _buildDropdownField(
+                      labelText: "Preferred Day",
+                      value: controller.preferredDay.value.isEmpty
+                          ? null
+                          : controller.preferredDay.value,
+                      items: [
+                        'Monday',
+                        'Tuesday',
+                        'Wednesday',
+                        'Thursday',
+                        'Friday',
+                        'Saturday'
+                      ],
+                      onChanged: (newValue) =>
+                          controller.preferredDay.value = newValue ?? '',
+                      icon: Icons.event,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDropdownField(
+                      labelText: "Preferred Time",
+                      value: controller.preferredTime.value.isEmpty
+                          ? null
+                          : controller.preferredTime.value,
+                      items: [
+                        'Morning (9am-12pm)',
+                        'Afternoon (12pm-5pm)',
+                        'Evening (5pm-8pm)'
+                      ],
+                      onChanged: (newValue) =>
+                          controller.preferredTime.value = newValue ?? '',
+                      icon: Icons.access_time,
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                );
+              },
+            ),
           ),
-
-          // Top wave effect
 
           // Submit button at bottom
           Positioned(
@@ -2255,12 +2477,18 @@ class SalesEmployeeForm extends StatelessWidget {
                   ),
                 ],
               ),
-              child: CommonButton(
-                text: "Submit Consultation Request",
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.buildingBlue,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 onPressed: controller.submitForm,
-                isPrimary: true,
-                color: AppTheme.buildingBlue,
-                icon: Icons.send,
+                icon: Icon(Icons.send),
+                label: Text("Submit Consultation Request"),
               ),
             ),
           ),
@@ -2277,9 +2505,10 @@ class SalesEmployeeForm extends StatelessWidget {
         children: [
           Icon(icon, color: AppTheme.buildingBlue, size: 22),
           const SizedBox(width: 8),
-          CommonText(
-            text: title,
-            style: AppTypography.semiBold.copyWith(
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
               fontSize: 16,
               color: AppTheme.deepBlack,
             ),
@@ -2352,7 +2581,7 @@ class SalesEmployeeForm extends StatelessWidget {
                   value: value,
                   hint: Text(
                     "Select $labelText",
-                    style: AppTypography.regular.copyWith(
+                    style: TextStyle(
                       color: AppTheme.deepBlack.withOpacity(0.5),
                     ),
                   ),
@@ -2362,7 +2591,7 @@ class SalesEmployeeForm extends StatelessWidget {
                       value: value,
                       child: Text(
                         value,
-                        style: AppTypography.regular.copyWith(
+                        style: TextStyle(
                           color: AppTheme.deepBlack,
                         ),
                       ),
@@ -2383,6 +2612,36 @@ class SalesEmployeeForm extends StatelessWidget {
     required String selectedValue,
     required Function(String?) onChanged,
   }) {
+    // Add safety check for engineers list
+    if (engineers.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.lightGray),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.grey.shade50,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.engineering,
+                  color: AppTheme.buildingBlue.withOpacity(0.7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "No engineers available",
+                  style: TextStyle(
+                    color: AppTheme.deepBlack.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Container(
@@ -2402,17 +2661,21 @@ class SalesEmployeeForm extends StatelessWidget {
                   value: selectedValue.isEmpty ? null : selectedValue,
                   hint: Text(
                     "Select Engineer",
-                    style: AppTypography.regular.copyWith(
+                    style: TextStyle(
                       color: AppTheme.deepBlack.withOpacity(0.5),
                     ),
                   ),
                   isExpanded: true,
                   items: engineers.map((engineer) {
+                    // Add null safety checks
+                    final uid = engineer['uid']?.toString() ?? '';
+                    final name = engineer['name']?.toString() ?? 'Unknown';
+
                     return DropdownMenuItem<String>(
-                      value: engineer['uid'],
+                      value: uid,
                       child: Text(
-                        engineer['name'],
-                        style: AppTypography.regular.copyWith(
+                        name,
+                        style: TextStyle(
                           color: AppTheme.deepBlack,
                         ),
                       ),
@@ -2832,18 +3095,4 @@ class BottomWavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class TeamMember {
-  final String designation;
-  final String name;
-  final bool isAssigned;
-  final String id;
-
-  TeamMember({
-    required this.designation,
-    required this.name,
-    required this.isAssigned,
-    required this.id,
-  });
 }

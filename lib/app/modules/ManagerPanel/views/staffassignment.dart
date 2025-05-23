@@ -37,6 +37,7 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
     'Engineer',
     'Technician',
     'Site Supervisor',
+    'Electrician',
     'Other'
   ];
 
@@ -53,6 +54,10 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
       final employeesSnapshot = await _firestore
           .collection('Employees')
           .where('managerId', isEqualTo: managerId)
+          .where('designation', whereNotIn: [
+        'Project Manager',
+        'Sales Employee'
+      ]) // Add this filter
           .get();
 
       final Map<String, List<Map<String, dynamic>>> tempGroup = {};
@@ -64,20 +69,19 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
 
       for (final doc in employeesSnapshot.docs) {
         final employee = doc.data();
-        final isAvailable = await _checkEmployeeAvailability(doc.id);
 
-        if (isAvailable) {
-          // Default to 'Other' if designation isn't one of our categories
-          String designation = employee['designation'] ?? 'Other';
-          if (!staffCategories.contains(designation)) {
-            designation = 'Other';
-          }
-
-          tempGroup[designation]!.add({
-            ...employee,
-            'uid': doc.id,
-          });
+        // No need to check availability since we're allowing multiple projects
+        String designation = employee['designation'] ?? 'Other';
+        if (!staffCategories.contains(designation)) {
+          designation = 'Other';
         }
+
+        tempGroup[designation]!.add({
+          ...employee,
+          'uid': doc.id,
+          'currentProjects': employee['projects']?.length ??
+              0, // Add this to show number of current projects
+        });
       }
 
       setState(() {
@@ -90,40 +94,6 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
     }
   }
 
-  Future<bool> _checkEmployeeAvailability(String employeeId) async {
-    try {
-      final projectsSnapshot = await _firestore
-          .collection('Projects')
-          .where('assignedStaff', arrayContains: employeeId)
-          .get();
-
-      for (final projectDoc in projectsSnapshot.docs) {
-        final project = projectDoc.data();
-        final projectStart = _parseDate(project['startDate']);
-        final projectEnd = _parseDate(project['endDate']);
-
-        if (_datesOverlap(projectStart, projectEnd)) {
-          return false;
-        }
-      }
-      return true;
-    } catch (e) {
-      print("Availability check error: $e");
-      return false;
-    }
-  }
-
-  DateTime _parseDate(dynamic date) {
-    if (date is Timestamp) return date.toDate();
-    if (date is String) return DateTime.parse(date);
-    return DateTime.now();
-  }
-
-  bool _datesOverlap(DateTime projectStart, DateTime projectEnd) {
-    return projectStart.isBefore(widget.endDate) &&
-        projectEnd.isAfter(widget.startDate);
-  }
-
   Future<void> _assignStaff() async {
     if (selectedStaff.isEmpty) {
       Get.snackbar("Error", "Please select at least one team member");
@@ -131,23 +101,21 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
     }
 
     try {
-      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Update project with selected staff and dates
+      // Update project with selected staff
       await _firestore.collection('Projects').doc(widget.projectId).update({
         'assignedStaff': FieldValue.arrayUnion(selectedStaff),
-        'status':
-            'doing', // Change project status to "doing" after staff assignment
+        'status': 'doing',
         'startDate': Timestamp.fromDate(widget.startDate),
         'endDate': Timestamp.fromDate(widget.endDate),
       });
 
-      // Update each staff member with project assignment and dates
+      // Update each staff member's projects array
       final batch = _firestore.batch();
       for (final staffId in selectedStaff) {
         final staffRef = _firestore.collection('Employees').doc(staffId);
@@ -157,6 +125,7 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
               'projectId': widget.projectId,
               'startDate': Timestamp.fromDate(widget.startDate),
               'endDate': Timestamp.fromDate(widget.endDate),
+              'assignedAt': Timestamp.now(), // Add assignment timestamp
             }
           ])
         });
@@ -164,24 +133,19 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
 
       await batch.commit();
 
-      // Close loading dialog
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
 
-      // Success message
       Get.snackbar(
         "Success",
-        "Team members assigned successfully! Project updated to 'doing'.",
+        "Team members assigned successfully!",
         backgroundColor: Colors.green,
         colorText: Colors.white,
       );
 
-      // Navigate to Manager Panel using GetX navigation
-      // This is the fixed part - using GetX navigation pattern to match the rest of the app
       Get.offAllNamed(Routes.MANAGER_PANEL);
     } catch (e) {
-      // Close loading dialog if open
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -346,17 +310,44 @@ class _StaffAssignmentScreenState extends State<StaffAssignmentScreen> {
                                 final isSelected =
                                     selectedStaff.contains(staff['uid']);
                                 return CheckboxListTile(
-                                  title: CommonText(
-                                    text: staff['name'] ?? 'Unnamed',
-                                    style: AppTypography.regular,
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            CommonText(
+                                              text: staff['name'] ?? 'Unnamed',
+                                              style: AppTypography.regular,
+                                            ),
+                                            if (staff['email'] != null)
+                                              CommonText(
+                                                text: staff['email'],
+                                                style: AppTypography.small,
+                                                color: Colors.grey[600],
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[200],
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: CommonText(
+                                          text:
+                                              '${staff['currentProjects']} projects',
+                                          style: AppTypography.small.copyWith(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  subtitle: staff['email'] != null
-                                      ? CommonText(
-                                          text: staff['email'],
-                                          style: AppTypography.small,
-                                          color: Colors.grey[600],
-                                        )
-                                      : null,
                                   value: isSelected,
                                   activeColor: AppColors.primary,
                                   onChanged: (bool? value) {

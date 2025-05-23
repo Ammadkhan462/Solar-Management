@@ -24,8 +24,7 @@ import 'package:admin/app/routes/app_pages.dart';
 class ProjectCreationScreen extends StatefulWidget {
   final Map<String, dynamic>? existingProject;
 
-  const ProjectCreationScreen({Key? key, this.existingProject})
-      : super(key: key);
+  const ProjectCreationScreen({super.key, this.existingProject});
 
   @override
   _ProjectCreationScreenState createState() => _ProjectCreationScreenState();
@@ -987,7 +986,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -1097,7 +1096,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -1200,7 +1199,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -1498,186 +1497,192 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
     }
 
     final NumberFormat formatter = NumberFormat("#,##0", "en_US");
-
-    return SingleChildScrollView(
-      child: Card(
-        elevation: 2,
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CommonText(
-                text: 'Project Summary',
-                style: AppTypography.bold.copyWith(fontSize: 20),
-                color: AppColors.buildingBlue,
-              ),
-              const SizedBox(height: 24),
-
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primaryGreen),
+    return LayoutBuilder(builder: (context, constraints) {
+      return SingleChildScrollView(
+        child: Card(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CommonText(
+                  text: 'Project Summary',
+                  style: AppTypography.bold.copyWith(fontSize: 20),
+                  color: AppColors.buildingBlue,
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        CommonText(
-                          text: 'System Capacity:',
-                          style: AppTypography.medium,
-                        ),
-                        CommonText(
-                          text: '${_totalKw.toStringAsFixed(2)} kW',
-                          style: AppTypography.bold,
-                          color: AppColors.primaryGreen,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        CommonText(
-                          text: 'Total Estimate:',
-                          style: AppTypography.medium,
-                        ),
-                        CommonText(
-                          text: 'PKR ${formatter.format(totalPrice.round())}',
-                          style: AppTypography.bold,
-                          color: AppColors.accentOrange,
-                        ),
-                      ],
-                    ),
-                  ],
+                const SizedBox(height: 24),
+
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primaryGreen),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          CommonText(
+                            text: 'System Capacity:',
+                            style: AppTypography.medium,
+                          ),
+                          CommonText(
+                            text: '${_totalKw.toStringAsFixed(2)} kW',
+                            style: AppTypography.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          CommonText(
+                            text: 'Total Estimate:',
+                            style: AppTypography.medium,
+                          ),
+                          CommonText(
+                            text: 'PKR ${formatter.format(totalPrice.round())}',
+                            style: AppTypography.bold,
+                            color: AppColors.accentOrange,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Solar Panel Details
-              _buildSummarySection(
-                'Solar Panel Details',
-                [
-                  if (pvModule.isNotEmpty) 'Type: $pvModule',
-                  if (brand.isNotEmpty) 'Brand: $brand',
-                  if (size.isNotEmpty) 'Size: $size W',
-                  if (panelQuantity.isNotEmpty) 'Quantity: $panelQuantity',
-                  if (pricePerWatt.isNotEmpty)
-                    'Price per Watt: PKR $pricePerWatt',
-                ],
-              ),
-
-              // Inverter Details
-              _buildSummarySection(
-                'Inverter Details',
-                [
-                  if (inverterType.isNotEmpty) 'Type: $inverterType',
-                  if (kwSize.isNotEmpty) 'Size: $kwSize kW',
-                  if (inverterBrand.isNotEmpty) 'Brand: $inverterBrand',
-                  if (inverterPrice.isNotEmpty && inverterQuantity.isNotEmpty)
-                    'Inverter(s): $inverterQuantity × PKR ${formatter.format(double.tryParse(inverterPrice) ?? 0)}',
-                ],
-              ),
-
-              // Structure Details
-              _buildSummarySection(
-                'Structure Details',
-                [
-                  if (structureType.isNotEmpty) 'Type: $structureType',
-                  if (structurePrice.isNotEmpty)
-                    'Price: PKR ${formatter.format(double.tryParse(structurePrice) ?? 0)}',
-                ],
-              ),
-
-              // Wiring Details
-              _buildSummarySection(
-                'Wiring Details',
-                [
-                  if (wireSize.isNotEmpty) 'Size: $wireSize',
-                  if (wireLength.isNotEmpty) 'Length: $wireLength meters',
-                  if (wirePricePerMeter.isNotEmpty)
-                    'Price/meter: PKR $wirePricePerMeter',
-                ],
-              ),
-
-              // Breakers Details
-              if (selectedBreakers.isNotEmpty)
+                // Solar Panel Details
                 _buildSummarySection(
-                  'Breakers',
-                  selectedBreakers.map((breaker) {
-                    final quantity = breakerQuantities[breaker] ?? '0';
-                    final price = breakerPrices[breaker] ?? '0';
-                    return '$breaker: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
-                  }).toList(),
-                ),
-
-              // Earthing Details
-              if (selectedEarthing.isNotEmpty)
-                _buildSummarySection(
-                  'Earthing Components',
-                  selectedEarthing.map((item) {
-                    final quantity = earthingQuantities[item] ?? '0';
-                    final price = earthingPrices[item] ?? '0';
-                    return '$item: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
-                  }).toList(),
-                ),
-
-              // Casing Details
-              if (selectedCasing.isNotEmpty)
-                _buildSummarySection(
-                  'Casing Components',
-                  selectedCasing.map((item) {
-                    final quantity = casingQuantities[item] ?? '0';
-                    final price = casingPrices[item] ?? '0';
-                    return '$item: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
-                  }).toList(),
-                ),
-
-              // Battery Details (if applicable)
-              if (installBattery)
-                _buildSummarySection(
-                  'Battery Details',
+                  'Solar Panel Details',
                   [
-                    if (batteryType.isNotEmpty) 'Type: $batteryType',
-                    if (batteryBrand.isNotEmpty) 'Brand: $batteryBrand',
-                    if (batteryQuantity.isNotEmpty && batteryPrice.isNotEmpty)
-                      'Battery(s): $batteryQuantity × PKR ${formatter.format(double.tryParse(batteryPrice) ?? 0)}',
+                    if (pvModule.isNotEmpty) 'Type: $pvModule',
+                    if (brand.isNotEmpty) 'Brand: $brand',
+                    if (size.isNotEmpty) 'Size: $size W',
+                    if (panelQuantity.isNotEmpty) 'Quantity: $panelQuantity',
+                    if (pricePerWatt.isNotEmpty)
+                      'Price per Watt: PKR $pricePerWatt',
                   ],
                 ),
 
-              // Project Timeline
-              _buildSummarySection(
-                'Project Timeline',
-                [
-                  if (startDate != null) 'Start Date: $startDate',
-                  if (endDate != null) 'End Date: $endDate',
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: CommonButton(
-                  text: 'Submit Project',
-                  onPressed: _submitProject,
-                  color: AppColors.primaryGreen,
-                  icon: Icons.check_circle,
+                // Inverter Details
+                _buildSummarySection(
+                  'Inverter Details',
+                  [
+                    if (inverterType.isNotEmpty) 'Type: $inverterType',
+                    if (kwSize.isNotEmpty) 'Size: $kwSize kW',
+                    if (inverterBrand.isNotEmpty) 'Brand: $inverterBrand',
+                    if (inverterPrice.isNotEmpty && inverterQuantity.isNotEmpty)
+                      'Inverter(s): $inverterQuantity × PKR ${formatter.format(double.tryParse(inverterPrice) ?? 0)}',
+                  ],
                 ),
-              ),
 
-              const SizedBox(height: 16),
-            ],
+                // Structure Details
+                _buildSummarySection(
+                  'Structure Details',
+                  [
+                    if (structureType.isNotEmpty) 'Type: $structureType',
+                    if (structurePrice.isNotEmpty)
+                      'Price: PKR ${formatter.format(double.tryParse(structurePrice) ?? 0)}',
+                  ],
+                ),
+
+                // Wiring Details
+                _buildSummarySection(
+                  'Wiring Details',
+                  [
+                    if (wireSize.isNotEmpty) 'Size: $wireSize',
+                    if (wireLength.isNotEmpty) 'Length: $wireLength meters',
+                    if (wirePricePerMeter.isNotEmpty)
+                      'Price/meter: PKR $wirePricePerMeter',
+                  ],
+                ),
+
+                // Breakers Details
+                if (selectedBreakers.isNotEmpty)
+                  _buildSummarySection(
+                    'Breakers',
+                    selectedBreakers.map((breaker) {
+                      final quantity = breakerQuantities[breaker] ?? '0';
+                      final price = breakerPrices[breaker] ?? '0';
+                      return '$breaker: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
+                    }).toList(),
+                  ),
+
+                // Earthing Details
+                if (selectedEarthing.isNotEmpty)
+                  _buildSummarySection(
+                    'Earthing Components',
+                    selectedEarthing.map((item) {
+                      final quantity = earthingQuantities[item] ?? '0';
+                      final price = earthingPrices[item] ?? '0';
+                      return '$item: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
+                    }).toList(),
+                  ),
+
+                // Casing Details
+                if (selectedCasing.isNotEmpty)
+                  _buildSummarySection(
+                    'Casing Components',
+                    selectedCasing.map((item) {
+                      final quantity = casingQuantities[item] ?? '0';
+                      final price = casingPrices[item] ?? '0';
+                      return '$item: $quantity × PKR ${formatter.format(double.tryParse(price) ?? 0)}';
+                    }).toList(),
+                  ),
+
+                // Battery Details (if applicable)
+                if (installBattery)
+                  _buildSummarySection(
+                    'Battery Details',
+                    [
+                      if (batteryType.isNotEmpty) 'Type: $batteryType',
+                      if (batteryBrand.isNotEmpty) 'Brand: $batteryBrand',
+                      if (batteryQuantity.isNotEmpty && batteryPrice.isNotEmpty)
+                        'Battery(s): $batteryQuantity × PKR ${formatter.format(double.tryParse(batteryPrice) ?? 0)}',
+                    ],
+                  ),
+
+                // Project Timeline
+                _buildSummarySection(
+                  'Project Timeline',
+                  [
+                    if (startDate != null) 'Start Date: $startDate',
+                    if (endDate != null) 'End Date: $endDate',
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _submitProject,
+                    icon: Icon(Icons.check_circle, color: Colors.white),
+                    label: Text('Submit Project'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildSummarySection(String title, List<String> items) {
@@ -1691,12 +1696,10 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
           color: AppColors.buildingBlue,
         ),
         const SizedBox(height: 8),
-        ...items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: CommonText(text: item),
-                ))
-            .toList(),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: CommonText(text: item),
+            )),
         const SizedBox(height: 8),
         const Divider(),
       ],

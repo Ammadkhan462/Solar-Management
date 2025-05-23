@@ -11,22 +11,26 @@ import 'package:admin/app/theme/app_colors.dart';
 import 'package:admin/app/theme/typography.dart';
 
 class ManagerLoginView extends GetView<ManagerLoginController> {
-  ManagerLoginView({Key? key}) : super(key: key);
+  const ManagerLoginView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return LoginPageTemplate(
-      title: 'Manager Login',
-      primaryColor: AppTheme.primaryGreen,
-      loginIcon: Icons.manage_accounts,
-      emailController: controller.emailController,
-      passwordController: controller.passwordController,
-      isPasswordHidden: controller.isPasswordHidden,
-      togglePasswordVisibility: () => controller.isPasswordHidden.toggle(),
-      onLoginPressed: controller.loginManager,
-      isLoading: controller.isLoading,
-      showSignUp: false,
-      showForgotPassword: false,
+    return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // This prevents resizing when keyboard appears
+      body: LoginPageTemplate(
+        title: 'Manager Login',
+        primaryColor: AppTheme.primaryGreen,
+        loginIcon: Icons.manage_accounts,
+        emailController: controller.emailController,
+        passwordController: controller.passwordController,
+        isPasswordHidden: controller.isPasswordHidden,
+        togglePasswordVisibility: () => controller.isPasswordHidden.toggle(),
+        onLoginPressed: controller.loginManager,
+        isLoading: controller.isLoading,
+        showSignUp: false,
+        showForgotPassword: false,
+      ),
     );
   }
 }

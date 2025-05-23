@@ -15,10 +15,6 @@ class ManagerLoginController extends GetxController {
   final TextEditingController passwordController = TextEditingController();
   final RxBool isPasswordHidden = true.obs;
   final count = 0.obs;
-  @override
-  void onInit() {
-    super.onInit();
-  }
 
   Future<void> loginManager() async {
     try {

@@ -6,8 +6,9 @@ import 'package:get/get.dart';
 import '../controllers/dash_board_controller.dart';
 
 class DashBoardView extends GetView<DashBoardController> {
-  DashBoardView({Key? key}) : super(key: key);
+  DashBoardView({super.key});
 
+  @override
   final DashBoardController controller = Get.put(DashBoardController());
   final TextEditingController nameController = TextEditingController();
   final TextEditingController cnicController = TextEditingController();

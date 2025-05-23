@@ -11,14 +11,14 @@ class CommonText extends StatelessWidget {
   final TextOverflow? overflow;
 
   const CommonText({
-    Key? key,
+    super.key,
     required this.text,
     this.style,
     this.color,
     this.textAlign,
     this.maxLines,
     this.overflow,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

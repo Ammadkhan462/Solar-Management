@@ -12,9 +12,10 @@ import '../controllers/login_page_controller.dart';
 
 // EXAMPLE IMPLEMENTATION - ADMIN LOGIN PAGE
 class LoginPageView extends GetView<LoginPageController> {
-  LoginPageView({Key? key}) : super(key: key);
+  LoginPageView({super.key});
 
   // Initialize controller in the constructor or using lazy initialization
+  @override
   final controller = Get.put(LoginPageController());
 
   @override

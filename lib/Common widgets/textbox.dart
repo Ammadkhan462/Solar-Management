@@ -10,12 +10,12 @@ class CommonTextBox extends StatelessWidget {
   final TextInputType keyboardType;
 
   const CommonTextBox({
-    Key? key,
+    super.key,
     required this.controller,
     required this.hintText,
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

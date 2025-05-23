@@ -12,7 +12,7 @@ import 'package:wave/config.dart';
 import 'package:wave/wave.dart';
 
 class LoginChoiceView extends StatelessWidget {
-  const LoginChoiceView({Key? key}) : super(key: key);
+  const LoginChoiceView({super.key});
 
   @override
   Widget build(BuildContext context) {

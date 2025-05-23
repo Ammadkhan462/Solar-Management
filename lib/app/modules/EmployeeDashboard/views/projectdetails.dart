@@ -38,13 +38,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/employee_dashboard_controller.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-// Remove the duplicate standalone functions and keep only the class methods inside ProjectDetailsScreen
+
+// ... (Previous imports and code remain unchanged)
 
 class ProjectDetailsScreen extends StatelessWidget {
   final String projectId;
 
-  ProjectDetailsScreen({required this.projectId});
+  ProjectDetailsScreen({super.key, required this.projectId});
 
   final RxString status = RxString('completed');
   final RxString satisfactionLevel = RxString('');
@@ -54,6 +54,7 @@ class ProjectDetailsScreen extends StatelessWidget {
   // Timer for deadline countdown
   final RxString timeRemaining = RxString('');
   Timer? _timer;
+
   void _launchMapsUrl(String url) async {
     if (url.isEmpty) {
       Get.snackbar(
@@ -93,9 +94,11 @@ class ProjectDetailsScreen extends StatelessWidget {
         Get.put(ProjectDetailsController());
     final dashboardController = Get.find<EmployeeDashboardController>();
     final bool isSalesEmployee = dashboardController.isSalesEmployee;
+    final bool isProjectManager = dashboardController.isProjectManager;
 
     controller.listenToProjectChanges(projectId);
-    void _startDeadlineTimer(ProjectDetailsController controller) {
+
+    void startDeadlineTimer(ProjectDetailsController controller) {
       // Cancel any existing timer
       _timer?.cancel();
 
@@ -110,9 +113,6 @@ class ProjectDetailsScreen extends StatelessWidget {
           timeRemaining.value = "No deadline set";
           return;
         }
-
-        // Calculate the next occurrence of the preferred day and time
-        final now = DateTime.now();
 
         // Map day names to day of week numbers (1 = Monday, 7 = Sunday)
         final dayMap = {
@@ -146,20 +146,14 @@ class ProjectDetailsScreen extends StatelessWidget {
           }
         }
 
-        // Find the next occurrence of the preferred day
-        int daysUntilPreferred = preferredDayNumber - now.weekday;
-        if (daysUntilPreferred <= 0) {
-          // If today is the preferred day but we're past the preferred time, or if
-          // we're past the preferred day in this week, look at next week
-          if (daysUntilPreferred == 0 && now.hour >= preferredHour) {
-            daysUntilPreferred = 7;
-          } else {
-            daysUntilPreferred += 7;
-          }
-        }
+        // Get current time
+        final now = DateTime.now();
 
-        // Calculate the next deadline date
-        final nextDeadline = DateTime(
+        // Calculate the next occurrence of the preferred day in the current week
+        int daysUntilPreferred = preferredDayNumber - now.weekday;
+
+        // Calculate the deadline date for the preferred day/time in the current week
+        final deadline = DateTime(
           now.year,
           now.month,
           now.day + daysUntilPreferred,
@@ -168,27 +162,27 @@ class ProjectDetailsScreen extends StatelessWidget {
           0, // seconds
         );
 
-        // Calculate time remaining
-        final difference = nextDeadline.difference(now);
+        // Calculate time difference (can be negative if deadline has passed)
+        final difference = deadline.difference(now);
 
+        // Extract time components
         final days = difference.inDays;
         final hours = difference.inHours % 24;
         final minutes = difference.inMinutes % 60;
         final seconds = difference.inSeconds % 60;
 
-        timeRemaining.value =
-            "$days days, $hours hours, $minutes min, $seconds sec";
+        // Format the time remaining (show negative if deadline has passed)
+        if (difference.isNegative) {
+          timeRemaining.value =
+              "${days.abs()} days, ${hours.abs()} hours, ${minutes.abs()} min, ${seconds.abs()} sec overdue";
+        } else {
+          timeRemaining.value =
+              "$days days, $hours hours, $minutes min, $seconds sec";
+        }
       });
     }
 
-    @override
-    void dispose() {
-      _timer?.cancel();
-      // Note: This class doesn't extend StatefulWidget, so you'll need to handle
-      // disposal in a different way if needed
-    }
-
-    Widget _buildInfoRow(String label, String value,
+    Widget buildInfoRow(String label, String value,
         {bool isLink = false, Function()? onPressed}) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -211,7 +205,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                   ? InkWell(
                       onTap: onPressed,
                       child: Text(
-                        value,
+                        value ?? 'Not Specified', // Handle null with default
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.blue,
@@ -220,7 +214,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      value,
+                      value ?? 'Not Specified', // Handle null with default
                       style: TextStyle(fontSize: 14, color: AppTheme.deepBlack),
                     ),
             ),
@@ -231,7 +225,7 @@ class ProjectDetailsScreen extends StatelessWidget {
 
     // Start deadline timer
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startDeadlineTimer(controller);
+      startDeadlineTimer(controller);
     });
 
     return Scaffold(
@@ -376,24 +370,24 @@ class ProjectDetailsScreen extends StatelessWidget {
                       ),
                       Divider(color: AppTheme.lightGray),
                       const SizedBox(height: 8),
-                      _buildInfoRow("Project Name",
+                      buildInfoRow("Project Name",
                           project['projectName'] ?? 'Not Specified'),
-                      _buildInfoRow("Client Name",
+                      buildInfoRow("Client Name",
                           project['clientName'] ?? 'Not Specified'),
-                      _buildInfoRow("Property Type",
+                      buildInfoRow("Property Type",
                           project['propertyType'] ?? 'Not Specified'),
-                      _buildInfoRow("Preferred Day",
+                      buildInfoRow("Preferred Day",
                           project['preferredDay'] ?? 'Not Specified'),
-                      _buildInfoRow("Preferred Time",
+                      buildInfoRow("Preferred Time",
                           project['preferredTime'] ?? 'Not Specified'),
-                      _buildInfoRow("Solar Capacity",
+                      buildInfoRow("Solar Capacity",
                           "${project['solarCapacity'] ?? 'Not Specified'} kW"),
-                      _buildInfoRow("Solar Type",
+                      buildInfoRow("Solar Type",
                           project['solarType'] ?? 'Not Specified'),
-                      _buildInfoRow("Structure Type",
+                      buildInfoRow("Structure Type",
                           project['structureType'] ?? 'Not Specified'),
                       // Add Address field to project info
-                      _buildInfoRow(
+                      buildInfoRow(
                           "Address", project['address'] ?? 'Not Specified'),
                       LocationUrlWidget(
                         url: project['locationPinUrl'] ?? '',
@@ -407,6 +401,7 @@ class ProjectDetailsScreen extends StatelessWidget {
 
               // Task Photos Section - Only visible for non-sales employees
               if (!isSalesEmployee &&
+                  !isProjectManager &&
                   (status.value == 'pending' || status.value == 'completed'))
                 Card(
                   margin:
@@ -478,7 +473,10 @@ class ProjectDetailsScreen extends StatelessWidget {
               // Only show this section for sales employees if project is completed
               if (isSalesEmployee &&
                       project['taskPhotos'] != null &&
+                      project['satisfactionLevel'] != null &&
+                      project['comments'] != null &&
                       status.value == 'pending' ||
+                  isProjectManager ||
                   (isSalesEmployee && status.value != 'Approved'))
                 Card(
                   margin:
@@ -549,6 +547,58 @@ class ProjectDetailsScreen extends StatelessWidget {
                   ),
                 ),
 
+              if (isSalesEmployee ||
+                  isProjectManager &&
+                      project['satisfactionLevel'] != null &&
+                      project['comments'] != null)
+                Card(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Project Evaluation",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.deepBlack,
+                          ),
+                        ),
+                        Divider(color: AppTheme.lightGray),
+                        const SizedBox(height: 12),
+                        buildInfoRow(
+                            "Satisfaction Level",
+                            project['satisfactionLevel']?.toString() ??
+                                'Not Specified'),
+                        const SizedBox(height: 12),
+                        Text("Comments:",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.deepBlack)),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGray.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.lightGray),
+                          ),
+                          child: Text(
+                              project['comments']?.toString() ?? 'No Comments'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               // Project Satisfaction section - Only editable for non-sales employees
               // and only if not already completed
               if (!isSalesEmployee &&
@@ -665,6 +715,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                 )
               // Read-only Evaluation for non-sales employees after submission
               else if (!isSalesEmployee &&
+                  !isProjectManager &&
                   status.value == 'pending' &&
                   project['satisfactionLevel'] != null &&
                   project['comments'] != null)
@@ -690,7 +741,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                         ),
                         Divider(color: AppTheme.lightGray),
                         const SizedBox(height: 12),
-                        _buildInfoRow(
+                        buildInfoRow(
                             "Satisfaction Level", project['satisfactionLevel']),
                         const SizedBox(height: 12),
                         Text("Comments:",
@@ -751,8 +802,6 @@ class ProjectDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
-              const SizedBox(height: 20),
 
               // Approval Button for Sales Employee
               if (isSalesEmployee && status.value == 'pending')
@@ -1091,6 +1140,8 @@ class ProjectDetailsScreen extends StatelessWidget {
   }
 }
 
+// ... (Rest of the classes like PhotoCaptureScreen, ProjectDetailsController, FullScreenImageViewer, and LocationUrlWidget remain unchanged)
+
 // This screen will be needed for photo capture
 class PhotoCaptureScreen extends StatefulWidget {
   final String projectId;
@@ -1098,11 +1149,11 @@ class PhotoCaptureScreen extends StatefulWidget {
   final Function(String) onPhotoSubmitted;
 
   const PhotoCaptureScreen({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.taskName,
     required this.onPhotoSubmitted,
-  }) : super(key: key);
+  });
 
   @override
   _PhotoCaptureScreenState createState() => _PhotoCaptureScreenState();
@@ -1296,9 +1347,9 @@ class FullScreenImageViewer extends StatefulWidget {
   final String imageUrl;
 
   const FullScreenImageViewer({
-    Key? key,
+    super.key,
     required this.imageUrl,
-  }) : super(key: key);
+  });
 
   @override
   _FullScreenImageViewerState createState() => _FullScreenImageViewerState();
@@ -1612,11 +1663,11 @@ class LocationUrlWidget extends StatelessWidget {
   final Function(String) onLaunch;
 
   const LocationUrlWidget({
-    Key? key,
+    super.key,
     required this.url,
     required this.displayText,
     required this.onLaunch,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,0 +1,2 @@
+C:/Users/ammad/Desktop/project/Solar-Management/android/app/.cxx/RelWithDebInfo/664un682/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/ammad/Desktop/project/Solar-Management/android/app/.cxx/RelWithDebInfo/664un682/x86_64/CMakeFiles/rebuild_cache.dir

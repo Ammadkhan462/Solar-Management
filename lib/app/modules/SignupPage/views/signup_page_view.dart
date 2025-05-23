@@ -9,7 +9,7 @@ import 'package:get/get.dart';
 import '../controllers/signup_page_controller.dart';
 
 class SignupPageView extends GetView<SignupPageController> {
-  const SignupPageView({Key? key}) : super(key: key);
+  const SignupPageView({super.key});
 
   @override
   Widget build(BuildContext context) {

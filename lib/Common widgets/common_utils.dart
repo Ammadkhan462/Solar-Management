@@ -47,7 +47,7 @@ class AppTheme {
   }
 
   static Widget buildBottomWave(double screenHeight) {
-    return Container(
+    return SizedBox(
       height: screenHeight * 0.1,
       child: WaveWidget(
         config: CustomConfig(

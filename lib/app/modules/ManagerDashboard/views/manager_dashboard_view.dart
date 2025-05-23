@@ -5,7 +5,7 @@ import 'package:flutter/services.dart'; // For clipboard functionality
 import '../controllers/manager_dashboard_controller.dart';
 
 class ManagerDashboardView extends GetView<ManagerDashboardController> {
-  const ManagerDashboardView({Key? key}) : super(key: key);
+  const ManagerDashboardView({super.key});
 
   @override
   Widget build(BuildContext context) {

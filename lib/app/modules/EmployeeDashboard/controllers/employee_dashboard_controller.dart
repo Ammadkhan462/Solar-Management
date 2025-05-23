@@ -454,7 +454,7 @@ class EmployeeDashboardController extends GetxController {
         .snapshots() // This provides real-time updates
         .listen((querySnapshot) {
       createdProjects.value = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return {
           ...data,
           'id': doc.id,
@@ -709,7 +709,7 @@ class EmployeeDashboardController extends GetxController {
           "All projects with manager ID $targetManagerId and employee details: ${projects.length}");
     } catch (e) {
       print("Error fetching projects with manager ID $targetManagerId: $e");
-      throw e; // Re-throw the error so it can be caught by the calling function
+      rethrow; // Re-throw the error so it can be caught by the calling function
     } finally {
       // Always set isLoading to false, regardless of success or failure
       isLoading.value = false;
@@ -1032,7 +1032,7 @@ class EmployeeDashboardController extends GetxController {
         .snapshots()
         .listen((querySnapshot) {
       assignedProjects.value = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return {
           ...data,
           'id': doc.id,
@@ -1153,7 +1153,7 @@ class EmployeeDashboardController extends GetxController {
         } else {
           print("Projects found for employee: $employeeUid");
           assignedProjects.value = querySnapshot.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             return {
               ...data,
               'id': doc.id,
@@ -1218,7 +1218,7 @@ class EmployeeDashboardController extends GetxController {
           .snapshots()
           .listen((snapshot) {
         assignedProjects.assignAll(snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           return {'id': doc.id, ...data};
         }).toList());
         isLoading.value = false;
@@ -1231,7 +1231,7 @@ class EmployeeDashboardController extends GetxController {
           .snapshots()
           .listen((snapshot) {
         final salesProjects = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           return {'id': doc.id, ...data};
         }).toList();
 

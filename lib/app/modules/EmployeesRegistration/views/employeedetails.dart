@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class EmployeeDetailsView extends StatelessWidget {
   final String employeeUID;
 
-  EmployeeDetailsView({required this.employeeUID, Key? key}) : super(key: key);
+  const EmployeeDetailsView({required this.employeeUID, super.key});
 
   @override
   Widget build(BuildContext context) {
